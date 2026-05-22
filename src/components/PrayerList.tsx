@@ -83,14 +83,16 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
         const isDone = completed[prayer]
 
         return (
-          <motion.div
+          <motion.button
             layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            whileTap={{ scale: 0.98 }}
             key={prayer}
             onClick={() => handleToggle(prayer)}
+            aria-label={`${prayer} at ${time}, status: ${isDone ? 'completed' : 'pending'}`}
             className={`
-              p-5 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer transition-all border
+              w-full text-left p-5 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer transition-all border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background
               ${isDone ? 'bg-primary/5 border-primary/30' : 'bg-card border-border/60 hover:border-primary/30'}
             `}
           >
@@ -98,18 +100,19 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               <h3 className={`font-semibold text-lg transition-colors ${isDone ? 'text-primary' : 'text-foreground'}`}>
                 {prayer}
               </h3>
-              <p className="text-sm text-muted-foreground">{time}</p>
+              <p className="text-sm text-muted-foreground">
+                {time} &bull; <span className={isDone ? 'text-primary font-medium' : ''}>{isDone ? 'Completed' : 'Pending'}</span>
+              </p>
             </div>
             
-            <motion.button 
-              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${
+            <div
+              className={`w-8 h-8 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
                 isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border'
               }`}
-              whileTap={{ scale: 0.9 }}
             >
               {isDone && <Check size={16} strokeWidth={3} />}
-            </motion.button>
-          </motion.div>
+            </div>
+          </motion.button>
         )
       })}
     </div>
