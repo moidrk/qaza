@@ -4,16 +4,23 @@ import { db } from "@/db"
 import { users } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { deletePushSubscriptionForUser, savePushSubscriptionForUser } from "@/lib/push-subscriptions"
+import { readJsonBody, requireSameOriginMutation } from "@/lib/route-security"
 import { getZodError, pushSubscribeBodySchema, pushUnsubscribeBodySchema } from "@/lib/validation"
 
 export async function POST(req: Request) {
   try {
+    const originError = requireSameOriginMutation(req)
+    if (originError) return originError
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const parsed = pushSubscribeBodySchema.safeParse(await req.json())
+    const body = await readJsonBody(req)
+    if (!body.success) return body.response
+
+    const parsed = pushSubscribeBodySchema.safeParse(body.data)
     if (!parsed.success) {
       return NextResponse.json({ error: getZodError(parsed.error) }, { status: 400 })
     }
@@ -42,12 +49,18 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
+    const originError = requireSameOriginMutation(req)
+    if (originError) return originError
+
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const parsed = pushUnsubscribeBodySchema.safeParse(await req.json())
+    const body = await readJsonBody(req)
+    if (!body.success) return body.response
+
+    const parsed = pushUnsubscribeBodySchema.safeParse(body.data)
     if (!parsed.success) {
       return NextResponse.json({ error: getZodError(parsed.error) }, { status: 400 })
     }

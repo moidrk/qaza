@@ -15,7 +15,8 @@ import {
   type PrayerName,
   type PrayerStatus,
 } from "@/lib/validation"
-import { upsertPrayerStatus } from "@/lib/prayer-writes"
+import { upsertPrayerStatuses } from "@/lib/prayer-writes"
+import { getUserLocalDate } from "@/lib/date-utils"
 import { z } from "zod"
 
 function parseStoredExcusedRanges(value: string | null | undefined): ExcusedRange[] {
@@ -376,10 +377,14 @@ export async function syncPrayerMutations(mutations: unknown) {
       latestMutations.set(key, mut.payload);
     }
 
-    for (const payload of latestMutations.values()) {
-      const { prayerName, date, status } = payload;
-      await upsertPrayerStatus({ userId, prayerName, date, status });
-    }
+    await upsertPrayerStatuses(
+      Array.from(latestMutations.values(), ({ prayerName, date, status }) => ({
+        userId,
+        prayerName,
+        date,
+        status,
+      }))
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to sync mutations", error);
@@ -391,6 +396,11 @@ async function autoBackfillMissedPrayers(userId: string) {
   try {
     const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
     if (!user) return { error: "User not found" };
+
+    const todayStr = getUserLocalDate(user.timezone);
+    if (user.lastAutoBackfillDate && user.lastAutoBackfillDate >= todayStr) {
+      return { success: true, count: 0 };
+    }
 
     const startDate = new Date(user.createdAt);
     // Set to start of the day in local time/UTC so it correctly compares with yesterday
@@ -404,8 +414,7 @@ async function autoBackfillMissedPrayers(userId: string) {
       startDate.setTime(maxBackfillDate.getTime());
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = new Date(`${todayStr}T00:00:00.000Z`);
 
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -463,6 +472,8 @@ async function autoBackfillMissedPrayers(userId: string) {
           });
       }
     }
+
+    await db.update(users).set({ lastAutoBackfillDate: todayStr }).where(eq(users.id, userId));
 
     return { success: true, count: missing.length };
   } catch (error) {

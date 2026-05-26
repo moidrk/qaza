@@ -1,3 +1,5 @@
+import "server-only"
+
 import { db } from "@/db"
 import { pushSubscriptions } from "@/db/schema"
 import { and, eq, ne } from "drizzle-orm"

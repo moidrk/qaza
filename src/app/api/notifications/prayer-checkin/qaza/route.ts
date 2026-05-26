@@ -2,18 +2,27 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { markPrayerMissed } from "@/lib/prayer-writes"
 import { resolveNotificationActionUserId } from "@/lib/notification-actions"
+import { readJsonBody, requireSameOriginMutation } from "@/lib/route-security"
 import { getZodError, notificationActionRequestSchema } from "@/lib/validation"
 
 export async function POST(request: Request) {
   try {
     const session = await auth()
-    const parsed = notificationActionRequestSchema.safeParse(await request.json())
+    const body = await readJsonBody(request)
+    if (!body.success) return body.response
+
+    const parsed = notificationActionRequestSchema.safeParse(body.data)
 
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: getZodError(parsed.error) }, { status: 400 })
     }
 
     const { prayerName, date, actionToken } = parsed.data
+    if (!actionToken) {
+      const originError = requireSameOriginMutation(request)
+      if (originError) return originError
+    }
+
     const actionUser = resolveNotificationActionUserId({
       sessionUserId: session?.user?.id,
       actionToken,

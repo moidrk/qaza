@@ -18,12 +18,22 @@ import { CheckInModal } from "@/components/CheckInModal"
 import { useMounted } from "@/hooks/useMounted"
 
 type ConsistencyDay = {
+  name: string
+  date: string
   prayers: number
-  requiredCount?: number
-  isExcused?: boolean
+  requiredCount: number
+  isExcused: boolean
 }
 
-export function HomeClient({ userName = "Friend" }: { userName?: string }) {
+export function HomeClient({
+  userName = "Friend",
+  initialConsistency,
+  initialConsistencyDate,
+}: {
+  userName?: string
+  initialConsistency?: ConsistencyDay[]
+  initialConsistencyDate?: string
+}) {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [progress, setProgress] = useState({ completed: 0, total: 5 })
   const isMounted = useMounted()
@@ -44,9 +54,11 @@ export function HomeClient({ userName = "Friend" }: { userName?: string }) {
 
   const isToday = isMounted ? isSameDay(selectedDate, new Date()) : true
   
+  const consistencyDate = initialConsistencyDate || format(new Date(), "yyyy-MM-dd")
   const { data: consistencyRes } = useQuery({
-    queryKey: ['weeklyConsistency'],
-    queryFn: async () => await getWeeklyConsistency(),
+    queryKey: ['weeklyConsistency', consistencyDate],
+    queryFn: async () => await getWeeklyConsistency(consistencyDate),
+    initialData: initialConsistency ? { success: true, data: initialConsistency } : undefined,
   })
 
   let totalWeekly = 0;

@@ -1,3 +1,5 @@
+import "server-only"
+
 import { verifyNotificationActionToken, type NotificationAction } from "@/lib/notification-tokens"
 import { getZodError, notFutureIsoDateSchema, type PrayerName } from "@/lib/validation"
 

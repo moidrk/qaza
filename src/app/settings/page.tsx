@@ -9,13 +9,18 @@ import { TimingSettings } from "@/components/TimingSettings"
 import { PacingSettings } from "@/components/PacingSettings"
 import { CycleSettings } from "@/components/CycleSettings"
 import { LogoutButton } from "@/components/LogoutButton"
+import { UserPreferenceHydrator } from "@/components/UserPreferenceHydrator"
+import { getUserPreferences } from "@/actions/user"
 
 export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user) redirect("/login")
+  const preferencesRes = await getUserPreferences()
+  const preferences = preferencesRes.success && preferencesRes.data ? preferencesRes.data : null
 
   return (
     <main className="flex min-h-full flex-col items-center p-6 bg-background">
+      <UserPreferenceHydrator preferences={preferences} />
       <header className="w-full max-w-md py-6 mb-4 border-b border-border/50 text-center">
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">Manage your account and preferences.</p>

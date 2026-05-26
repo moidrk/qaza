@@ -9,25 +9,33 @@ import { motion } from "framer-motion"
 import { useMounted } from "@/hooks/useMounted"
 
 type ConsistencyDay = {
+  name: string
   date: string
   prayers: number
-  requiredCount?: number
-  isExcused?: boolean
+  requiredCount: number
+  isExcused: boolean
 }
 
-export function ConsistencyHeatmap() {
+export function ConsistencyHeatmap({
+  initialData,
+  initialDate,
+}: {
+  initialData?: ConsistencyDay[]
+  initialDate?: string
+}) {
   const mounted = useMounted()
 
   // Compute local date string reliably
   const today = new Date();
   const offset = today.getTimezoneOffset() * 60000;
   const localDate = new Date(today.getTime() - offset);
-  const todayStr = localDate.toISOString().split('T')[0];
+  const todayStr = initialDate || localDate.toISOString().split('T')[0];
 
   const { data: consistencyRes, isLoading } = useQuery({
     queryKey: ['weeklyConsistency', todayStr, 30],
     queryFn: async () => await getWeeklyConsistency(todayStr, 30),
-    enabled: mounted
+    enabled: mounted,
+    initialData: initialData ? { success: true, data: initialData } : undefined,
   })
 
   if (!mounted) return null
