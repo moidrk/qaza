@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import { Serwist } from "serwist";
+import { NetworkOnly, Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -40,7 +40,24 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [
+    {
+      matcher: ({ sameOrigin, url: { pathname } }) => sameOrigin && pathname.startsWith("/api/"),
+      method: "GET",
+      handler: new NetworkOnly(),
+    },
+    {
+      matcher: ({ request, sameOrigin, url: { pathname } }) =>
+        sameOrigin &&
+        !pathname.startsWith("/api/") &&
+        (request.mode === "navigate" ||
+          request.headers.get("RSC") === "1" ||
+          pathname.startsWith("/_next/data/")),
+      method: "GET",
+      handler: new NetworkOnly(),
+    },
+    ...defaultCache,
+  ],
 });
 
 serwist.addEventListeners();

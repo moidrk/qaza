@@ -1,17 +1,31 @@
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from './schema';
+import "server-only"
 
-const databaseUrl = process.env.DATABASE_URL;
+import { neon } from "@neondatabase/serverless"
+import { drizzle } from "drizzle-orm/neon-http"
+import * as schema from "./schema"
 
-if (!databaseUrl) {
-  throw new Error("DATABASE_URL is not configured");
+function createDb() {
+  const databaseUrl = process.env.DATABASE_URL
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is not configured")
+  }
+
+  return drizzle({ client: neon(databaseUrl), schema })
 }
 
-const sql = neon(databaseUrl);
+type Database = ReturnType<typeof createDb>
+
+let dbInstance: Database | null = null
 
 export function getDb() {
-  return db;
+  dbInstance ??= createDb()
+  return dbInstance
 }
 
-export const db = drizzle({ client: sql, schema });
+export const db = new Proxy({} as Database, {
+  get(_target, prop, receiver) {
+    const value = Reflect.get(getDb(), prop, receiver)
+    return typeof value === "function" ? value.bind(getDb()) : value
+  },
+})

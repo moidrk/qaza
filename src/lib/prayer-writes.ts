@@ -1,4 +1,6 @@
-import { and, eq } from "drizzle-orm"
+import "server-only"
+
+import { and, eq, sql } from "drizzle-orm"
 import { db } from "@/db"
 import { prayerLogs, qazaItems } from "@/db/schema"
 import type { PrayerName, PrayerStatus } from "@/lib/validation"
@@ -29,6 +31,34 @@ export async function upsertPrayerStatus(input: {
       set: {
         status: input.status,
         completedAt: completedAtFor(input.status),
+      },
+    })
+}
+
+export async function upsertPrayerStatuses(inputs: {
+  userId: string
+  prayerName: PrayerName
+  date: string
+  status: PrayerStatus
+}[]) {
+  if (inputs.length === 0) return
+
+  await db
+    .insert(prayerLogs)
+    .values(
+      inputs.map((input) => ({
+        userId: input.userId,
+        prayerName: input.prayerName,
+        date: input.date,
+        status: input.status,
+        completedAt: completedAtFor(input.status),
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [prayerLogs.userId, prayerLogs.date, prayerLogs.prayerName],
+      set: {
+        status: sql`excluded."status"`,
+        completedAt: sql`excluded."completedAt"`,
       },
     })
 }

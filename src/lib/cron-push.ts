@@ -1,7 +1,9 @@
+import "server-only";
+
 import { db } from "@/db";
 import { pushSubscriptions } from "@/db/schema";
 import { sendPushNotification } from "@/lib/web-push";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 type PushSubscriptionRecord = {
   id: string;
@@ -16,6 +18,30 @@ type CronPushDeliveryResult = {
   failures: number;
 };
 
+const PUSH_CONCURRENCY = 5;
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+) {
+  const results: R[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const current = index++;
+      results[current] = await mapper(items[current]);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+
+  return results;
+}
+
 export async function sendCronPushNotifications({
   userId,
   subscriptions,
@@ -26,10 +52,10 @@ export async function sendCronPushNotifications({
   payload: Record<string, unknown>;
 }): Promise<CronPushDeliveryResult> {
   let sentToAtLeastOne = false;
-  let expiredSubscriptions = 0;
   let failures = 0;
+  const expiredSubscriptionIds: string[] = [];
 
-  for (const sub of subscriptions) {
+  await mapWithConcurrency(subscriptions, PUSH_CONCURRENCY, async (sub) => {
     const result = await sendPushNotification(
       { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
       payload
@@ -37,15 +63,12 @@ export async function sendCronPushNotifications({
 
     if (result.success) {
       sentToAtLeastOne = true;
-      continue;
+      return;
     }
 
     if (result.shouldDeleteSubscription) {
-      await db
-        .delete(pushSubscriptions)
-        .where(and(eq(pushSubscriptions.id, sub.id), eq(pushSubscriptions.userId, userId)));
-      expiredSubscriptions++;
-      continue;
+      expiredSubscriptionIds.push(sub.id);
+      return;
     }
 
     failures++;
@@ -55,7 +78,13 @@ export async function sendCronPushNotifications({
       statusCode: result.statusCode,
       error: result.error,
     });
+  });
+
+  if (expiredSubscriptionIds.length > 0) {
+    await db
+      .delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, userId), inArray(pushSubscriptions.id, expiredSubscriptionIds)));
   }
 
-  return { sentToAtLeastOne, expiredSubscriptions, failures };
+  return { sentToAtLeastOne, expiredSubscriptions: expiredSubscriptionIds.length, failures };
 }

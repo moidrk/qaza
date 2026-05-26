@@ -1,3 +1,5 @@
+import "server-only"
+
 import { createElement, type ComponentType } from "react"
 import PasswordResetOtpEmail, {
   passwordResetOtpEmailSubject,

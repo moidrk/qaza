@@ -2,13 +2,16 @@ import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
 import Google from "next-auth/providers/google"
 import { DrizzleAdapter } from "@auth/drizzle-adapter"
-import { db } from "./db"
+import { getDb } from "./db"
 import { users } from "./db/schema"
 import { eq } from "drizzle-orm"
 import bcrypt from "bcryptjs"
+import { enforceEmailAndIpRateLimit } from "./lib/rate-limit"
+
+const authDb = getDb()
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  adapter: DrizzleAdapter(authDb),
   providers: [
     Google({}),
     Credentials({
@@ -19,9 +22,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) return null;
         const email = String(credentials.email).trim().toLowerCase();
-        
-        const user = await db.query.users.findFirst({ 
-          where: eq(users.email, email) 
+        const rateLimitError = await enforceEmailAndIpRateLimit("auth:login", email, 10, 15 * 60 * 1000)
+        if (rateLimitError) return null
+        const user = await authDb.query.users.findFirst({
+          where: eq(users.email, email)
         });
 
         if (!user || !user.password) return null;

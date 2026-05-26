@@ -1,3 +1,5 @@
+import "server-only"
+
 import crypto from "node:crypto"
 import { z } from "zod"
 import { isoDateSchema, prayerNameSchema, type PrayerName } from "@/lib/validation"

@@ -1,41 +1,66 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { useQuery } from "@tanstack/react-query"
 import { Trophy, AlertCircle, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getWeeklyConsistency, getPrayerInsights } from "@/actions/prayers"
 import { ConsistencyHeatmap } from "@/components/ConsistencyHeatmap"
 import { useMounted } from "@/hooks/useMounted"
 
+const WeeklyBarChart = dynamic(
+  () => import("@/components/WeeklyBarChart").then((mod) => mod.WeeklyBarChart),
+  {
+    ssr: false,
+    loading: () => <Loader2 className="h-6 w-6 animate-spin text-primary" />,
+  }
+)
+
 type ConsistencyDatum = {
   name: string
+  date: string
   prayers: number
-  requiredCount?: number
-  isExcused?: boolean
+  requiredCount: number
+  isExcused: boolean
+}
+
+type PrayerInsights = {
+  mostPrayed: { name: string; count: number }
+  mostMissed: { name: string; count: number }
 }
 
 const emptyWeek: ConsistencyDatum[] = [
-  { name: "Mon", prayers: 0 },
-  { name: "Tue", prayers: 0 },
-  { name: "Wed", prayers: 0 },
-  { name: "Thu", prayers: 0 },
-  { name: "Fri", prayers: 0 },
-  { name: "Sat", prayers: 0 },
-  { name: "Sun", prayers: 0 },
+  { name: "Mon", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Tue", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Wed", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Thu", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Fri", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Sat", date: "", prayers: 0, requiredCount: 5, isExcused: false },
+  { name: "Sun", date: "", prayers: 0, requiredCount: 5, isExcused: false },
 ]
 
-export function AnalyticsClient() {
+export function AnalyticsClient({
+  initialConsistency,
+  initialHeatmap,
+  initialInsights,
+  initialDate,
+}: {
+  initialConsistency?: ConsistencyDatum[]
+  initialHeatmap?: ConsistencyDatum[]
+  initialInsights?: PrayerInsights
+  initialDate?: string
+}) {
   const mounted = useMounted()
 
   const today = new Date()
   const offset = today.getTimezoneOffset() * 60000
   const localDate = new Date(today.getTime() - offset)
-  const todayStr = localDate.toISOString().split("T")[0]
+  const todayStr = initialDate || localDate.toISOString().split("T")[0]
 
   const { data: consistencyRes, isLoading } = useQuery({
     queryKey: ["weeklyConsistency", todayStr],
     queryFn: async () => await getWeeklyConsistency(todayStr),
+    initialData: initialConsistency ? { success: true, data: initialConsistency } : undefined,
   })
 
   const data: ConsistencyDatum[] = consistencyRes?.success && consistencyRes.data ? consistencyRes.data : emptyWeek
@@ -43,6 +68,7 @@ export function AnalyticsClient() {
   const { data: insightsRes } = useQuery({
     queryKey: ["prayerInsights"],
     queryFn: async () => await getPrayerInsights(),
+    initialData: initialInsights ? { success: true, data: initialInsights } : undefined,
   })
 
   const mostPrayed = insightsRes?.data?.mostPrayed
@@ -66,14 +92,7 @@ export function AnalyticsClient() {
           </CardHeader>
           <CardContent className="h-[250px] w-full min-h-[250px] flex items-center justify-center">
             {mounted ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={[0, data.length > 0 ? Math.max(...data.map((d) => d.requiredCount ?? 5)) : 5]} />
-                  <Tooltip cursor={{ fill: "var(--primary)", opacity: 0.1 }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                  <Bar dataKey="prayers" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <WeeklyBarChart data={data} />
             ) : (
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             )}
@@ -128,7 +147,7 @@ export function AnalyticsClient() {
           </CardContent>
         </Card>
 
-        <ConsistencyHeatmap />
+        <ConsistencyHeatmap initialData={initialHeatmap} initialDate={todayStr} />
 
         <div className="grid grid-cols-2 gap-4">
           <Card className="border-border/60 shadow-sm">

@@ -32,6 +32,7 @@ export const users = pgTable("user", {
   excusedRanges: text("excusedRanges"), // JSON string
   dayCheckinEnabled: boolean("dayCheckinEnabled").default(true).notNull(),
   nightSummaryEnabled: boolean("nightSummaryEnabled").default(true).notNull(),
+  lastAutoBackfillDate: date("lastAutoBackfillDate"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 })
 

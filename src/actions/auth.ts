@@ -1,7 +1,6 @@
 "use server"
 
 import bcrypt from "bcryptjs"
-import { headers } from "next/headers"
 import { and, eq } from "drizzle-orm"
 import { signIn } from "@/auth"
 import { db } from "@/db"
@@ -14,26 +13,14 @@ import {
   passwordResetSchema,
   registerSchema,
 } from "@/lib/validation"
-import { checkRateLimit, createOtp, hashOtp, verifyOtpHash } from "@/lib/otp"
+import { createOtp, hashOtp, verifyOtpHash } from "@/lib/otp"
+import { enforceEmailAndIpRateLimit } from "@/lib/rate-limit"
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000
 const MAX_OTP_ATTEMPTS = 5
 
-async function getClientIp() {
-  const headerStore = await headers()
-  return (
-    headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headerStore.get("x-real-ip") ||
-    "unknown"
-  )
-}
-
 async function enforceRateLimit(scope: string, email: string, maxAttempts: number, windowMs: number) {
-  const ip = await getClientIp()
-  const emailError = await checkRateLimit(`${scope}:email:${email}`, maxAttempts, windowMs)
-  if (emailError) return emailError
-
-  return checkRateLimit(`${scope}:ip:${ip}`, maxAttempts, windowMs)
+  return enforceEmailAndIpRateLimit(scope, email, maxAttempts, windowMs)
 }
 
 async function createAndStoreOtp(email: string) {

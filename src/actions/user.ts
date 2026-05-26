@@ -13,6 +13,7 @@ import {
   userPreferencesSchema,
 } from "@/lib/validation"
 import { z } from "zod"
+import type { UserPreferencesDTO } from "@/lib/user-preferences"
 
 function parseJsonValue<T>(value: string | null, schema: z.ZodType<T>, fallback: T) {
   if (!value) return fallback
@@ -48,10 +49,15 @@ export async function getUserPreferences() {
     return {
       success: true,
       data: {
-        ...user,
+        latitude: user.latitude,
+        longitude: user.longitude,
+        timezone: user.timezone,
+        calcMethod: user.calcMethod,
+        asrMethod: user.asrMethod,
+        trackWitr: user.trackWitr,
         qazaPace: parseJsonValue(user.qazaPace, qazaPaceSchema.nullable(), null),
         excusedRanges: parseJsonValue(user.excusedRanges, z.array(excusedRangeSchema), []),
-      }
+      } satisfies UserPreferencesDTO,
     }
   } catch (e) {
     console.error(e)

@@ -17,5 +17,8 @@ export async function clearQazaClientStorage() {
   await Promise.all([
     del("qazatrack-storage"),
     del("qazatrack-query-cache"),
+    typeof caches === "undefined"
+      ? Promise.resolve()
+      : caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
   ])
 }
