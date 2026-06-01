@@ -6,6 +6,12 @@ import { db } from "./db"
 import { users } from "./db/schema"
 import { eq } from "drizzle-orm"
 import bcrypt from "bcryptjs"
+import { isBlockedEmail } from "./lib/auth-guards"
+
+type GoogleProfile = {
+  email?: string | null
+  email_verified?: boolean | null
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: DrizzleAdapter(db),
@@ -43,7 +49,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
+  events: {
+    async linkAccount({ user, account, profile }) {
+      const googleProfile = profile as GoogleProfile | undefined
+      if (account.provider === "google" && googleProfile?.email_verified === true && user.id) {
+        await db.update(users).set({ emailVerified: new Date() }).where(eq(users.id, user.id))
+      }
+    },
+  },
   callbacks: {
+    async signIn({ account, profile }) {
+      const googleProfile = profile as GoogleProfile | undefined
+      if (account?.provider === "google") {
+        if (!googleProfile?.email || googleProfile.email_verified !== true) {
+          return false
+        }
+
+        if (isBlockedEmail(googleProfile.email)) {
+          return false
+        }
+      }
+
+      return true
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
