@@ -119,3 +119,22 @@ export async function updateUserLocation(lat: number, lng: number, timezone: str
     return { error: "Failed to update location" }
   }
 }
+
+export async function updatePwaInstalled(installed: boolean) {
+  const session = await auth()
+  if (!session?.user?.id) return { error: "Unauthorized" }
+
+  const parsed = z.boolean().safeParse(installed)
+  if (!parsed.success) {
+    return { error: "Invalid install status" }
+  }
+
+  try {
+    await db.update(users).set({ pwaInstalled: parsed.data }).where(eq(users.id, session.user.id))
+    revalidatePath("/")
+    return { success: true }
+  } catch (e) {
+    console.error(e)
+    return { error: "Failed to update install status" }
+  }
+}

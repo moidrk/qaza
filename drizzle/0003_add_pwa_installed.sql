@@ -1,0 +1,1 @@
+ALTER TABLE "user" ADD COLUMN "pwaInstalled" boolean DEFAULT false NOT NULL;

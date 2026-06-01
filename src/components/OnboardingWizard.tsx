@@ -1,11 +1,26 @@
 "use client"
 
-import { useState, useSyncExternalStore, type ReactNode } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { BellRing, CheckCircle2, ChevronRight, Compass, History, Loader2, Star, X } from "lucide-react"
+import {
+  BellRing,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Compass,
+  Download,
+  EllipsisVertical,
+  History,
+  House,
+  Loader2,
+  Share2,
+  Smartphone,
+  Star,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { updateUserLocation } from "@/actions/user"
+import { updatePwaInstalled, updateUserLocation } from "@/actions/user"
 import { useAppStore } from "@/store"
 import {
   type BrowserLocation,
@@ -13,10 +28,15 @@ import {
   subscribeToPushNotifications,
 } from "@/lib/browser-permissions"
 
-type StepId = "daily" | "location" | "reminders" | "qaza" | "streak"
+type StepId = "daily" | "location" | "reminders" | "qaza" | "streak" | "install"
 type ActionStatus = "idle" | "loading" | "success" | "error"
+type MobilePlatform = "ios" | "android" | "other"
+type PwaInstallContext = {
+  platform: MobilePlatform
+  isStandalone: boolean
+}
 
-const steps: Array<{
+const baseSteps: Array<{
   id: StepId
   title: string
   description: string
@@ -60,6 +80,23 @@ const steps: Array<{
   },
 ]
 
+const installStep: (platform: MobilePlatform) => {
+  id: StepId
+  title: string
+  description: string
+  icon: ReactNode
+  color: string
+} = (platform) => ({
+  id: "install",
+  title: "Add Qaza to Your Phone",
+  description:
+    platform === "ios"
+      ? "Save Qaza to your iPhone or iPad home screen so it opens like an app."
+      : "Install Qaza on your Android home screen so it opens like an app.",
+  icon: <Smartphone className="w-16 h-16 text-emerald-600" />,
+  color: "bg-emerald-500/10 border-emerald-500/20",
+})
+
 function subscribeToOnboarding(callback: () => void) {
   window.addEventListener("storage", callback)
   return () => window.removeEventListener("storage", callback)
@@ -73,7 +110,38 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-export function OnboardingWizard() {
+function detectPwaInstallContext(): PwaInstallContext {
+  const userAgent = window.navigator.userAgent
+  const isIPadOS = window.navigator.platform === "MacIntel" && window.navigator.maxTouchPoints > 1
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent) || isIPadOS
+  const isAndroid = /Android/i.test(userAgent)
+  const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean }
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches || navigatorWithStandalone.standalone === true
+
+  return {
+    platform: isIOS ? "ios" : isAndroid ? "android" : "other",
+    isStandalone,
+  }
+}
+
+function getInstallInstructions(platform: MobilePlatform) {
+  if (platform === "ios") {
+    return [
+      { icon: <Share2 className="h-4 w-4" />, text: "Tap the Share button in Safari." },
+      { icon: <House className="h-4 w-4" />, text: "Tap Add to Home Screen." },
+      { icon: <Check className="h-4 w-4" />, text: "Tap Add. Qaza will appear on your home screen." },
+    ]
+  }
+
+  return [
+    { icon: <EllipsisVertical className="h-4 w-4" />, text: "Tap the browser menu." },
+    { icon: <Download className="h-4 w-4" />, text: "Tap Install app or Add to Home screen." },
+    { icon: <Check className="h-4 w-4" />, text: "Tap Install. Qaza will appear on your home screen." },
+  ]
+}
+
+export function OnboardingWizard({ pwaInstalled = false }: { pwaInstalled?: boolean }) {
   const shouldShowOnboarding = useSyncExternalStore(subscribeToOnboarding, getOnboardingSnapshot, () => false)
   const userLocation = useAppStore((state) => state.userLocation)
   const setUserLocation = useAppStore((state) => state.setUserLocation)
@@ -82,12 +150,41 @@ export function OnboardingWizard() {
   const [detectedLocation, setDetectedLocation] = useState<BrowserLocation | null>(null)
   const [locationStatus, setLocationStatus] = useState<ActionStatus>("idle")
   const [reminderStatus, setReminderStatus] = useState<ActionStatus>("idle")
+  const [pwaStatus, setPwaStatus] = useState<ActionStatus>("idle")
+  const [pwaContext, setPwaContext] = useState<PwaInstallContext>(() =>
+    typeof window === "undefined" ? { platform: "other", isStandalone: false } : detectPwaInstallContext()
+  )
+  const shouldShowInstallStep = pwaContext.platform !== "other" && !pwaContext.isStandalone && !pwaInstalled
+  const steps = useMemo(
+    () => (shouldShowInstallStep ? [...baseSteps, installStep(pwaContext.platform)] : baseSteps),
+    [pwaContext.platform, shouldShowInstallStep]
+  )
   const isOpen = shouldShowOnboarding && !dismissed
-  const step = steps[currentStep]
+  const safeCurrentStep = Math.min(currentStep, steps.length - 1)
+  const step = steps[safeCurrentStep]
   const isSetupStep = step.id === "location" || step.id === "reminders"
+  const isInstallStep = step.id === "install"
+
+  useEffect(() => {
+    if (pwaContext.isStandalone && !pwaInstalled) {
+      updatePwaInstalled(true).catch((error) => {
+        console.error("Failed to save installed PWA status", error)
+      })
+    }
+
+    const handleAppInstalled = () => {
+      setPwaContext((current) => ({
+        platform: current.platform,
+        isStandalone: true,
+      }))
+    }
+
+    window.addEventListener("appinstalled", handleAppInstalled)
+    return () => window.removeEventListener("appinstalled", handleAppInstalled)
+  }, [pwaContext.isStandalone, pwaInstalled])
 
   const handleNext = () => {
-    if (currentStep < steps.length - 1) {
+    if (safeCurrentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1)
     } else {
       finishOnboarding()
@@ -118,7 +215,7 @@ export function OnboardingWizard() {
   }
 
   const handleDetectLocation = async () => {
-    const stepIndex = currentStep
+    const stepIndex = safeCurrentStep
     setLocationStatus("loading")
 
     try {
@@ -142,7 +239,7 @@ export function OnboardingWizard() {
   }
 
   const handleEnableReminders = async () => {
-    const stepIndex = currentStep
+    const stepIndex = safeCurrentStep
     setReminderStatus("loading")
 
     try {
@@ -164,6 +261,26 @@ export function OnboardingWizard() {
       console.error("Onboarding reminder setup failed", error)
       setReminderStatus("error")
       toast.error(getErrorMessage(error, "Failed to enable reminders."))
+    }
+  }
+
+  const handlePwaInstallChoice = async (installed: boolean) => {
+    setPwaStatus("loading")
+
+    try {
+      const result = await updatePwaInstalled(installed)
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save install status.")
+      }
+
+      localStorage.setItem("qazatrack_pwa_installed", installed ? "true" : "false")
+      setPwaStatus("success")
+      finishOnboarding()
+    } catch (error) {
+      console.error("Onboarding PWA install status failed", error)
+      setPwaStatus("error")
+      toast.error(getErrorMessage(error, "Failed to save install status."))
     }
   }
 
@@ -228,6 +345,26 @@ export function OnboardingWizard() {
       )
     }
 
+    if (step.id === "install") {
+      return (
+        <div className="mt-5 w-full space-y-2 text-left">
+          {getInstallInstructions(pwaContext.platform).map((item, index) => (
+            <div
+              key={item.text}
+              className="flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/20 p-3"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                {item.icon}
+              </div>
+              <p className="pt-0.5 text-sm leading-5 text-foreground">
+                <span className="font-semibold">{index + 1}.</span> {item.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
     return null
   }
 
@@ -281,20 +418,41 @@ export function OnboardingWizard() {
                   <div
                     key={item.id}
                     className={`h-2 rounded-full transition-all duration-300 ${
-                      index === currentStep ? "w-8 bg-primary" : "w-2 bg-primary/20"
+                      index === safeCurrentStep ? "w-8 bg-primary" : "w-2 bg-primary/20"
                     }`}
                   />
                 ))}
               </div>
 
-              <Button
-                onClick={handleNext}
-                variant={isSetupStep ? "ghost" : "default"}
-                className="h-11 w-full rounded-xl text-base font-semibold"
-              >
-                {isSetupStep ? "Skip for now" : currentStep === steps.length - 1 ? "Start My Journey" : "Continue"}
-                {!isSetupStep && currentStep < steps.length - 1 && <ChevronRight className="ml-2 h-5 w-5" />}
-              </Button>
+              {isInstallStep ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={() => handlePwaInstallChoice(true)}
+                    disabled={pwaStatus === "loading"}
+                    className="h-11 rounded-xl text-base font-semibold"
+                  >
+                    {pwaStatus === "loading" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Done!
+                  </Button>
+                  <Button
+                    onClick={() => handlePwaInstallChoice(false)}
+                    disabled={pwaStatus === "loading"}
+                    variant="outline"
+                    className="h-11 rounded-xl text-base font-semibold"
+                  >
+                    Will Do Later
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  variant={isSetupStep ? "ghost" : "default"}
+                  className="h-11 w-full rounded-xl text-base font-semibold"
+                >
+                  {isSetupStep ? "Skip for now" : safeCurrentStep === steps.length - 1 ? "Start My Journey" : "Continue"}
+                  {!isSetupStep && safeCurrentStep < steps.length - 1 && <ChevronRight className="ml-2 h-5 w-5" />}
+                </Button>
+              )}
             </div>
           </motion.div>
         </motion.div>

@@ -23,7 +23,13 @@ type ConsistencyDay = {
   isExcused?: boolean
 }
 
-export function HomeClient({ userName = "Friend" }: { userName?: string }) {
+export function HomeClient({
+  userName = "Friend",
+  pwaInstalled = false,
+}: {
+  userName?: string
+  pwaInstalled?: boolean
+}) {
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [progress, setProgress] = useState({ completed: 0, total: 5 })
   const isMounted = useMounted()
@@ -163,7 +169,7 @@ export function HomeClient({ userName = "Friend" }: { userName?: string }) {
         onProgressChange={handleProgressChange} 
       />
 
-      <OnboardingWizard />
+      <OnboardingWizard pwaInstalled={pwaInstalled} />
       
       {checkinPrayer && checkinDate && (
         <CheckInModal prayerName={checkinPrayer} date={checkinDate} />
