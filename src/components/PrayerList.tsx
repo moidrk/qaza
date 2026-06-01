@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
 import { getTodayPrayers } from "@/actions/prayers"
 import { format } from "date-fns"
+import { useMounted } from "@/hooks/useMounted"
 
 type PrayerLog = {
   prayerName: string
@@ -21,6 +22,7 @@ interface PrayerListProps {
 }
 
 export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) {
+  const mounted = useMounted()
   const dateStr = format(selectedDate, "yyyy-MM-dd")
   const { data: timings, isLoading: isTimingsLoading } = usePrayerTimes(dateStr)
   
@@ -104,6 +106,14 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
   }, [timings, dateStr, nowTick]);
 
   const [lastActionMessage, setLastActionMessage] = useState("")
+
+  if (!mounted) {
+    return <div className="animate-pulse space-y-3">
+      {Array.from({ length: 5 }, (_, index) => (
+        <div key={index} className="h-16 bg-muted rounded-2xl w-full" />
+      ))}
+    </div>
+  }
 
   if (isTimingsLoading || isDbLoading) {
     return <div className="animate-pulse space-y-3">
