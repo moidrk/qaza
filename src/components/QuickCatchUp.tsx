@@ -64,6 +64,9 @@ export function QuickCatchUp() {
         <button 
           type="button"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Close Quick Catch-up" : "Open Quick Catch-up"}
+          aria-expanded={isOpen}
+          aria-controls="quick-catchup-drawer"
           className="relative flex items-center justify-center w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-[0_0_15px_rgba(0,0,0,0.1)] border-[4px] border-background transition-transform active:scale-95"
         >
           <motion.div
@@ -91,6 +94,7 @@ export function QuickCatchUp() {
               className="fixed inset-0 bg-background/60 backdrop-blur-sm z-[110]"
             />
             <motion.div
+              id="quick-catchup-drawer"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
@@ -117,6 +121,7 @@ export function QuickCatchUp() {
                   <button 
                     type="button"
                     onClick={() => setIsOpen(false)}
+                    aria-label="Close Quick Catch-up"
                     className="p-2 bg-secondary/50 hover:bg-secondary rounded-full transition-colors text-muted-foreground"
                   >
                     <X size={20} />
