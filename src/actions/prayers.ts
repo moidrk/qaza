@@ -1,6 +1,6 @@
 "use server"
 
-import { and, eq, count, gte, inArray } from "drizzle-orm"
+import { and, eq, count, gte, inArray, isNull } from "drizzle-orm"
 import { qazaItems, prayerLogs, users } from "@/db/schema"
 import { db } from "@/db"
 import { auth } from "@/auth"
@@ -51,47 +51,41 @@ export async function getQazaStats() {
 
   try {
     const [
-      qazaCounts,
+      qazaLogRows,
       manualQazaCounts,
-      completedPrayerLogs,
       completedManualQaza,
       user
     ] = await Promise.all([
       db.select({
         prayerName: prayerLogs.prayerName,
-        count: count(),
+        status: prayerLogs.status,
+        date: prayerLogs.date,
       }).from(prayerLogs)
-        .where(and(eq(prayerLogs.userId, userId), inArray(prayerLogs.status, ["missed", "qaza_completed"])))
-        .groupBy(prayerLogs.prayerName),
+        .where(and(eq(prayerLogs.userId, userId), inArray(prayerLogs.status, ["missed", "qaza_completed"]))),
       
       db.select({
         prayerName: qazaItems.prayerName,
         count: count(),
       }).from(qazaItems)
-        .where(eq(qazaItems.userId, userId))
+        .where(and(eq(qazaItems.userId, userId), isNull(qazaItems.dateMissed)))
         .groupBy(qazaItems.prayerName),
-        
-      db.select({
-        prayerName: prayerLogs.prayerName,
-        count: count(),
-      }).from(prayerLogs)
-        .where(and(eq(prayerLogs.userId, userId), eq(prayerLogs.status, "qaza_completed")))
-        .groupBy(prayerLogs.prayerName),
         
       db.select({
         prayerName: qazaItems.prayerName,
         count: count(),
       }).from(qazaItems)
-        .where(and(eq(qazaItems.userId, userId), eq(qazaItems.isCompleted, true)))
+        .where(and(eq(qazaItems.userId, userId), eq(qazaItems.isCompleted, true), isNull(qazaItems.dateMissed)))
         .groupBy(qazaItems.prayerName),
         
       db.query.users.findFirst({
         where: eq(users.id, userId),
-        columns: { trackWitr: true }
+        columns: { trackWitr: true, excusedRanges: true }
       })
     ]);
 
     const trackWitrEnabled = user?.trackWitr || false;
+    const excusedRanges = parseStoredExcusedRanges(user?.excusedRanges);
+    const qazaLogs = qazaLogRows.filter(log => !isDateInExcusedRange(log.date, excusedRanges));
 
     const backlog: Record<string, number> = {
       Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0
@@ -103,11 +97,11 @@ export async function getQazaStats() {
     let totalMissed = 0;
     let totalCovered = 0;
 
-    qazaCounts.forEach(q => {
+    qazaLogs.forEach(q => {
       const name = q.prayerName.charAt(0).toUpperCase() + q.prayerName.slice(1);
       if (name in backlog) {
-        backlog[name] += q.count;
-        totalMissed += q.count;
+        backlog[name] += 1;
+        totalMissed += 1;
       }
     });
 
@@ -119,11 +113,11 @@ export async function getQazaStats() {
       }
     });
 
-    completedPrayerLogs.forEach(q => {
+    qazaLogs.filter(q => q.status === "qaza_completed").forEach(q => {
       const name = q.prayerName.charAt(0).toUpperCase() + q.prayerName.slice(1);
       if (name in backlog) {
-        backlog[name] -= q.count;
-        totalCovered += q.count;
+        backlog[name] -= 1;
+        totalCovered += 1;
       }
     });
 
@@ -147,40 +141,27 @@ export async function getQazaStats() {
     const todayStr = localDate.toISOString().split('T')[0];
     const startOfToday = new Date(localDate.setHours(0, 0, 0, 0));
 
-    const [weeklyMissed, todayCompletedQaza, todayCompletedManual] = await Promise.all([
-      db.select({ count: count() })
-        .from(prayerLogs)
-        .where(and(
-          eq(prayerLogs.userId, userId),
-          inArray(prayerLogs.status, ["missed", "qaza_completed"]),
-          gte(prayerLogs.date, dateStr)
-        )),
-        
-      db.select({ count: count() })
-        .from(prayerLogs)
-        .where(and(
-          eq(prayerLogs.userId, userId),
-          eq(prayerLogs.status, "qaza_completed"),
-          eq(prayerLogs.date, todayStr)
-        )),
-        
+    const [todayCompletedManual] = await Promise.all([
       db.select({ count: count() })
         .from(qazaItems)
         .where(and(
           eq(qazaItems.userId, userId),
           eq(qazaItems.isCompleted, true),
+          isNull(qazaItems.dateMissed),
           gte(qazaItems.completedAt, startOfToday)
         ))
     ]);
 
-    const todayCompletedCount = (todayCompletedQaza[0]?.count || 0) + (todayCompletedManual[0]?.count || 0);
+    const weeklyMissed = qazaLogs.filter(log => log.date >= dateStr).length;
+    const todayCompletedQaza = qazaLogs.filter(log => log.status === "qaza_completed" && log.date === todayStr).length;
+    const todayCompletedCount = todayCompletedQaza + (todayCompletedManual[0]?.count || 0);
 
     return { 
       success: true, 
       data: {
         backlog,
         donut: { totalMissed, totalCovered, remaining: totalMissed - totalCovered },
-        weeklyMissed: weeklyMissed[0]?.count || 0,
+        weeklyMissed,
         todayCompletedCount
       } 
     };
@@ -221,17 +202,24 @@ export async function updateBulkQaza(prayerName: string, amount: number) {
       }
     } else if (qazaAmount < 0) {
       let remainingToComplete = Math.abs(qazaAmount);
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { excusedRanges: true }
+      });
+      const excusedRanges = parseStoredExcusedRanges(user?.excusedRanges);
 
       // First try to tick off specific missed prayers (most recent first)
-      const oldestMissedLogs = await db.query.prayerLogs.findMany({
+      const missedLogCandidates = await db.query.prayerLogs.findMany({
         where: and(
           eq(prayerLogs.userId, userId),
           inArray(prayerLogs.prayerName, [pNameLower, pNameTitle]),
           eq(prayerLogs.status, "missed")
         ),
-        orderBy: (logs, { desc }) => [desc(logs.date)],
-        limit: remainingToComplete
+        orderBy: (logs, { desc }) => [desc(logs.date)]
       });
+      const oldestMissedLogs = missedLogCandidates
+        .filter(log => !isDateInExcusedRange(log.date, excusedRanges))
+        .slice(0, remainingToComplete);
 
       if (oldestMissedLogs.length > 0) {
         const ids = oldestMissedLogs.map(l => l.id);
@@ -248,7 +236,8 @@ export async function updateBulkQaza(prayerName: string, amount: number) {
           where: and(
             eq(qazaItems.userId, userId), 
             inArray(qazaItems.prayerName, [pNameLower, pNameTitle]), 
-            eq(qazaItems.isCompleted, false)
+            eq(qazaItems.isCompleted, false),
+            isNull(qazaItems.dateMissed)
           ),
           limit: remainingToComplete
         });
@@ -477,6 +466,11 @@ export async function getDetailedQaza(prayerName: string) {
   try {
     const pNameLower = parsedPrayer.data;
     const pNameTitle = pNameLower.charAt(0).toUpperCase() + pNameLower.slice(1);
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { excusedRanges: true }
+    });
+    const excusedRanges = parseStoredExcusedRanges(user?.excusedRanges);
 
     const logs = await db.query.prayerLogs.findMany({
       where: and(
@@ -491,23 +485,20 @@ export async function getDetailedQaza(prayerName: string) {
       where: and(
         eq(qazaItems.userId, userId),
         inArray(qazaItems.prayerName, [pNameLower, pNameTitle]),
-        eq(qazaItems.isCompleted, false)
+        eq(qazaItems.isCompleted, false),
+        isNull(qazaItems.dateMissed)
       )
     });
 
     let bulkCount = 0;
     const specificDates: { id: string, date: string, type: 'log' | 'item' }[] = [];
 
-    logs.forEach(l => {
+    logs.filter(l => !isDateInExcusedRange(l.date, excusedRanges)).forEach(l => {
       specificDates.push({ id: l.id, date: l.date, type: 'log' });
     });
 
-    items.forEach(i => {
-      if (i.dateMissed) {
-        specificDates.push({ id: i.id, date: i.dateMissed, type: 'item' });
-      } else {
-        bulkCount++;
-      }
+    items.forEach(() => {
+      bulkCount++;
     });
 
     // Sort descending by date
@@ -555,43 +546,43 @@ export async function getPrayerInsights() {
   const userId = session.user.id;
   
   try {
-    const [completedCounts, missedLogs, missedItems, user] = await Promise.all([
+    const [completedLogs, missedLogs, missedItems, user] = await Promise.all([
       db.select({
         prayerName: prayerLogs.prayerName,
-        count: count(),
+        status: prayerLogs.status,
+        date: prayerLogs.date,
       }).from(prayerLogs)
-        .where(and(eq(prayerLogs.userId, userId), inArray(prayerLogs.status, ["completed", "qaza_completed"])))
-        .groupBy(prayerLogs.prayerName),
+        .where(and(eq(prayerLogs.userId, userId), inArray(prayerLogs.status, ["completed", "qaza_completed"]))),
         
       db.select({
         prayerName: prayerLogs.prayerName,
-        count: count(),
+        date: prayerLogs.date,
       }).from(prayerLogs)
-        .where(and(eq(prayerLogs.userId, userId), eq(prayerLogs.status, "missed")))
-        .groupBy(prayerLogs.prayerName),
+        .where(and(eq(prayerLogs.userId, userId), eq(prayerLogs.status, "missed"))),
         
       db.select({
         prayerName: qazaItems.prayerName,
         count: count(),
       }).from(qazaItems)
-        .where(and(eq(qazaItems.userId, userId), eq(qazaItems.isCompleted, false)))
+        .where(and(eq(qazaItems.userId, userId), eq(qazaItems.isCompleted, false), isNull(qazaItems.dateMissed)))
         .groupBy(qazaItems.prayerName),
         
       db.query.users.findFirst({
         where: eq(users.id, userId),
-        columns: { trackWitr: true }
+        columns: { trackWitr: true, excusedRanges: true }
       })
     ]);
     const trackWitrEnabled = user?.trackWitr || false;
+    const excusedRanges = parseStoredExcusedRanges(user?.excusedRanges);
 
     const missedMap: Record<string, number> = { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 };
     if (trackWitrEnabled) {
       missedMap.Witr = 0;
     }
 
-    missedLogs.forEach(c => {
+    missedLogs.filter(log => !isDateInExcusedRange(log.date, excusedRanges)).forEach(c => {
        const n = c.prayerName.charAt(0).toUpperCase() + c.prayerName.slice(1).toLowerCase();
-       if (n in missedMap) missedMap[n] += c.count;
+       if (n in missedMap) missedMap[n] += 1;
     });
     missedItems.forEach(c => {
        const n = c.prayerName.charAt(0).toUpperCase() + c.prayerName.slice(1).toLowerCase();
@@ -599,10 +590,14 @@ export async function getPrayerInsights() {
     });
 
     let mostPrayed = { name: "None", count: 0 };
-    completedCounts.forEach(c => {
+    const completedMap: Record<string, number> = {};
+    completedLogs.filter(log => !isDateInExcusedRange(log.date, excusedRanges)).forEach(c => {
        const n = c.prayerName.charAt(0).toUpperCase() + c.prayerName.slice(1);
-       if (c.count > mostPrayed.count) {
-          mostPrayed = { name: n, count: c.count };
+       completedMap[n] = (completedMap[n] || 0) + 1;
+    });
+    Object.entries(completedMap).forEach(([name, count]) => {
+       if (count > mostPrayed.count) {
+          mostPrayed = { name, count };
        }
     });
 

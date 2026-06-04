@@ -1,6 +1,6 @@
 import { and, eq, gte, inArray, lte } from "drizzle-orm"
 import { db } from "@/db"
-import { prayerLogs, qazaItems, users } from "@/db/schema"
+import { prayerLogs, users } from "@/db/schema"
 import {
   isDateInExcusedRange,
   parseStoredExcusedRanges,
@@ -23,43 +23,44 @@ async function getExcusedRangesForUser(userId: string) {
   return parseStoredExcusedRanges(user?.excusedRanges)
 }
 
-async function deleteDateSpecificQaza(input: {
+export async function reconcileExcusedPrayerLogs(input: {
   userId: string
-  prayerName: PrayerName
-  date: string
+  previousRanges: readonly ExcusedRange[]
+  currentRanges: readonly ExcusedRange[]
 }) {
-  await db
-    .delete(qazaItems)
-    .where(
-      and(
-        eq(qazaItems.userId, input.userId),
-        eq(qazaItems.prayerName, input.prayerName),
-        eq(qazaItems.dateMissed, input.date)
-      )
-    )
-}
+  for (const range of input.previousRanges) {
+    const staleExcusedLogs = await db.query.prayerLogs.findMany({
+      where: and(
+        eq(prayerLogs.userId, input.userId),
+        eq(prayerLogs.status, "excused"),
+        gte(prayerLogs.date, range.start),
+        lte(prayerLogs.date, range.end)
+      ),
+      columns: { id: true, date: true },
+    })
 
-export async function applyExcusedRangesToExistingPrayers(userId: string, ranges: readonly ExcusedRange[]) {
-  for (const range of ranges) {
+    const staleIds = staleExcusedLogs
+      .filter((log) => !isDateInExcusedRange(log.date, input.currentRanges))
+      .map((log) => log.id)
+
+    if (staleIds.length > 0) {
+      await db
+        .update(prayerLogs)
+        .set({ status: "missed", completedAt: null })
+        .where(inArray(prayerLogs.id, staleIds))
+    }
+  }
+
+  for (const range of input.currentRanges) {
     await db
       .update(prayerLogs)
       .set({ status: "excused", completedAt: null })
       .where(
         and(
-          eq(prayerLogs.userId, userId),
+          eq(prayerLogs.userId, input.userId),
           gte(prayerLogs.date, range.start),
           lte(prayerLogs.date, range.end),
-          inArray(prayerLogs.status, ["missed", "qaza_completed"])
-        )
-      )
-
-    await db
-      .delete(qazaItems)
-      .where(
-        and(
-          eq(qazaItems.userId, userId),
-          gte(qazaItems.dateMissed, range.start),
-          lte(qazaItems.dateMissed, range.end)
+          eq(prayerLogs.status, "missed")
         )
       )
   }
@@ -102,7 +103,6 @@ export async function markPrayerCompleted(input: {
       date: input.date,
       status: "excused",
     })
-    await deleteDateSpecificQaza(input)
     return
   }
 
@@ -151,7 +151,6 @@ export async function markPrayerMissed(input: {
       date: input.date,
       status: "excused",
     })
-    await deleteDateSpecificQaza(input)
     return
   }
 
@@ -161,16 +160,4 @@ export async function markPrayerMissed(input: {
     date: input.date,
     status: "missed",
   })
-
-  await db
-    .insert(qazaItems)
-    .values({
-      userId: input.userId,
-      prayerName: input.prayerName,
-      dateMissed: input.date,
-      isCompleted: false,
-    })
-    .onConflictDoNothing({
-      target: [qazaItems.userId, qazaItems.dateMissed, qazaItems.prayerName],
-    })
 }
