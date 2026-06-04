@@ -29,6 +29,13 @@
       "when": 1780310238874,
       "tag": "0003_add_pwa_installed",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780321763297,
+      "tag": "0004_flaky_proudstar",
+      "breakpoints": true
     }
   ]
 }

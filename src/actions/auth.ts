@@ -2,10 +2,10 @@
 
 import bcrypt from "bcryptjs"
 import { headers } from "next/headers"
-import { and, eq } from "drizzle-orm"
+import { and, eq, lt } from "drizzle-orm"
 import { signIn } from "@/auth"
 import { db } from "@/db"
-import { users, verificationTokens } from "@/db/schema"
+import { pendingRegistrations, users, verificationTokens } from "@/db/schema"
 import { sendPasswordResetOtpEmail, sendVerificationOtpEmail } from "@/lib/email"
 import {
   emailOnlySchema,
@@ -15,6 +15,12 @@ import {
   registerSchema,
 } from "@/lib/validation"
 import { checkRateLimit, createOtp, hashOtp, verifyOtpHash } from "@/lib/otp"
+import {
+  isBlockedEmail,
+  isHoneypotFilled,
+  isLikelyRandomName,
+  isTooFastRegistration,
+} from "@/lib/auth-guards"
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000
 const MAX_OTP_ATTEMPTS = 5
@@ -36,6 +42,14 @@ async function enforceRateLimit(scope: string, email: string, maxAttempts: numbe
   return checkRateLimit(`${scope}:ip:${ip}`, maxAttempts, windowMs)
 }
 
+async function cleanupExpiredAuthRecords() {
+  const now = new Date()
+  await Promise.all([
+    db.delete(verificationTokens).where(lt(verificationTokens.expires, now)),
+    db.delete(pendingRegistrations).where(lt(pendingRegistrations.expiresAt, now)),
+  ])
+}
+
 async function createAndStoreOtp(email: string) {
   const otp = createOtp()
   const expires = new Date(Date.now() + OTP_EXPIRY_MS)
@@ -49,6 +63,69 @@ async function createAndStoreOtp(email: string) {
   })
 
   return otp
+}
+
+async function storePendingRegistration(email: string, name: string, passwordHash: string) {
+  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS)
+
+  await db
+    .insert(pendingRegistrations)
+    .values({
+      email,
+      name,
+      passwordHash,
+      expiresAt,
+    })
+    .onConflictDoUpdate({
+      target: pendingRegistrations.email,
+      set: {
+        name,
+        passwordHash,
+        expiresAt,
+        createdAt: new Date(),
+      },
+    })
+}
+
+async function verifyPendingRegistration(email: string) {
+  const pendingRegistration = await db.query.pendingRegistrations.findFirst({
+    where: eq(pendingRegistrations.email, email),
+  })
+
+  if (!pendingRegistration) {
+    await db.update(users).set({ emailVerified: new Date() }).where(eq(users.email, email))
+    return null
+  }
+
+  if (new Date() > new Date(pendingRegistration.expiresAt)) {
+    await db.delete(pendingRegistrations).where(eq(pendingRegistrations.email, email))
+    return "Registration expired. Please sign up again."
+  }
+
+  const existing = await db.query.users.findFirst({
+    where: eq(users.email, email),
+  })
+
+  if (existing) {
+    await db
+      .update(users)
+      .set({
+        name: pendingRegistration.name,
+        password: pendingRegistration.passwordHash,
+        emailVerified: new Date(),
+      })
+      .where(eq(users.email, email))
+  } else {
+    await db.insert(users).values({
+      name: pendingRegistration.name,
+      email,
+      password: pendingRegistration.passwordHash,
+      emailVerified: new Date(),
+    })
+  }
+
+  await db.delete(pendingRegistrations).where(eq(pendingRegistrations.email, email))
+  return null
 }
 
 async function validateStoredOtp(email: string, otp: string) {
@@ -90,6 +167,10 @@ async function validateStoredOtp(email: string, otp: string) {
 
 export async function registerUser(formData: FormData) {
   try {
+    if (isHoneypotFilled(formData)) {
+      return { success: true }
+    }
+
     const parsed = registerSchema.safeParse({
       name: formData.get("name"),
       email: formData.get("email"),
@@ -101,6 +182,21 @@ export async function registerUser(formData: FormData) {
     }
 
     const { name, email, password } = parsed.data
+
+    if (isTooFastRegistration(formData)) {
+      return { error: "Please wait a moment before submitting the form." }
+    }
+
+    if (isBlockedEmail(email)) {
+      return { error: "Registration is unavailable for this email domain." }
+    }
+
+    if (isLikelyRandomName(name)) {
+      return { error: "Please enter your real name." }
+    }
+
+    await cleanupExpiredAuthRecords()
+
     const rateLimitError = await enforceRateLimit("auth:register", email, 5, 15 * 60 * 1000)
     if (rateLimitError) return { error: rateLimitError }
 
@@ -114,22 +210,7 @@ export async function registerUser(formData: FormData) {
 
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    if (existing) {
-      await db
-        .update(users)
-        .set({
-          name,
-          password: hashedPassword,
-        })
-        .where(eq(users.email, email))
-    } else {
-      await db.insert(users).values({
-        name,
-        email,
-        password: hashedPassword,
-      })
-    }
-
+    await storePendingRegistration(email, name, hashedPassword)
     const otp = await createAndStoreOtp(email)
     await sendVerificationOtpEmail({
       email,
@@ -161,7 +242,9 @@ export async function verifyOtp(formData: FormData) {
     const otpResult = await validateStoredOtp(email, otp)
     if (!otpResult.success) return { error: otpResult.error }
 
-    await db.update(users).set({ emailVerified: new Date() }).where(eq(users.email, email))
+    const registrationError = await verifyPendingRegistration(email)
+    if (registrationError) return { error: registrationError }
+
     await db.delete(verificationTokens).where(eq(verificationTokens.identifier, email))
 
     return { success: true }
@@ -179,19 +262,30 @@ export async function resendOtp(formData: FormData) {
     }
 
     const { email } = parsed.data
+    await cleanupExpiredAuthRecords()
+
     const rateLimitError = await enforceRateLimit("auth:resend-otp", email, 3, 10 * 60 * 1000)
     if (rateLimitError) return { error: rateLimitError }
 
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, email),
-    })
+    const [existingUser, pendingRegistration] = await Promise.all([
+      db.query.users.findFirst({
+        where: eq(users.email, email),
+      }),
+      db.query.pendingRegistrations.findFirst({
+        where: eq(pendingRegistrations.email, email),
+      }),
+    ])
 
-    if (!existingUser) {
+    if (!existingUser && !pendingRegistration) {
       return { success: true }
     }
 
-    if (existingUser.emailVerified) {
+    if (existingUser?.emailVerified) {
       return { error: "Email is already verified" }
+    }
+
+    if (!pendingRegistration && !existingUser?.password) {
+      return { success: true }
     }
 
     const otp = await createAndStoreOtp(email)

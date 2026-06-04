@@ -79,6 +79,20 @@ export const verificationTokens = pgTable(
   (vt) => [primaryKey({ columns: [vt.identifier, vt.token] })]
 )
 
+export const pendingRegistrations = pgTable(
+  "pending_registration",
+  {
+    email: text("email").primaryKey().notNull(),
+    name: text("name").notNull(),
+    passwordHash: text("passwordHash").notNull(),
+    expiresAt: timestamp("expiresAt", { mode: "date" }).notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("pending_registration_expires_at_idx").on(table.expiresAt),
+  ]
+)
+
 export const rateLimits = pgTable(
   "rate_limit",
   {

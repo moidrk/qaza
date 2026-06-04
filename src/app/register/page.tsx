@@ -12,6 +12,7 @@ import Link from "next/link"
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
+  const [startedAt] = useState(() => Date.now())
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,6 +41,15 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <input type="hidden" name="startedAt" value={startedAt} />
+            <input
+              type="text"
+              name="companyWebsite"
+              tabIndex={-1}
+              autoComplete="off"
+              className="hidden"
+              aria-hidden="true"
+            />
             <div className="space-y-2 text-left">
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" name="name" type="text" placeholder="Abdullah" required />

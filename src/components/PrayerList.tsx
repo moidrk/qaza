@@ -222,7 +222,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             aria-disabled={isFuture || isExcused}
             aria-label={isExcused ? `${prayer} is excused for this cycle period` : isDone ? `${prayer} is completed` : `Mark ${prayer} as prayed`}
             className={`
-              p-5 rounded-2xl flex items-center justify-between transition-all border select-none
+              p-5 rounded-2xl flex items-center justify-between transition-all border select-none active:scale-[0.98]
               ${isFuture ? 'bg-muted/30 border-border/30 cursor-not-allowed opacity-60' : 
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm cursor-default' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm cursor-pointer' : 
@@ -240,7 +240,14 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                   </span>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
+                {!isFuture && (
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    {isExcused ? 'Excused' : isDone ? 'Completed' : 'Pending'}
+                  </span>
+                )}
+              </div>
             </div>
             
             <motion.div
