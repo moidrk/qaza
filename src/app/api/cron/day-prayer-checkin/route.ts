@@ -6,6 +6,7 @@ import { getUserLocalDate } from '@/lib/date-utils';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { createNotificationActionToken } from '@/lib/notification-tokens';
 import { sendCronPushNotifications } from '@/lib/cron-push';
+import { isDateInExcusedRange, parseStoredExcusedRanges } from '@/lib/excused-periods';
 import type { PrayerName } from '@/lib/validation';
 
 export const runtime = "nodejs";
@@ -39,6 +40,54 @@ export async function GET(request: Request) {
       if (subs.length === 0) {
         skipped++;
         continue; // No push subscriptions, skip
+      }
+
+      const isExcusedToday = isDateInExcusedRange(
+        localDate,
+        parseStoredExcusedRanges(user.excusedRanges)
+      );
+
+      if (isExcusedToday) {
+        const uniqueKey = `${user.id}:${localDate}:day_checkin:excused`;
+        const existingLog = await db.query.notificationLogs.findFirst({
+          where: eq(notificationLogs.uniqueKey, uniqueKey)
+        });
+
+        if (existingLog) {
+          skipped++;
+          continue;
+        }
+
+        const payload = {
+          title: "Stay connected today",
+          body: "Your cycle excuse period is active. Take care of yourself, make dua, and stay close to Allah through dhikr and Wird when you can.",
+          payload: {
+            url: "/",
+            type: "cycle_excused_morning"
+          }
+        };
+
+        const delivery = await sendCronPushNotifications({
+          userId: user.id,
+          subscriptions: subs,
+          payload,
+        });
+        expiredSubscriptions += delivery.expiredSubscriptions;
+
+        if (delivery.sentToAtLeastOne) {
+          await db.insert(notificationLogs).values({
+            userId: user.id,
+            uniqueKey,
+            type: "day_checkin",
+          });
+          sent++;
+        } else if (delivery.failures > 0) {
+          errors++;
+        } else {
+          skipped++;
+        }
+
+        continue;
       }
 
       // Load today's logs

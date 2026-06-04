@@ -1,12 +1,69 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq, gte, inArray, lte } from "drizzle-orm"
 import { db } from "@/db"
-import { prayerLogs, qazaItems } from "@/db/schema"
+import { prayerLogs, users } from "@/db/schema"
+import {
+  isDateInExcusedRange,
+  parseStoredExcusedRanges,
+  type ExcusedRange,
+} from "@/lib/excused-periods"
 import type { PrayerName, PrayerStatus } from "@/lib/validation"
 
 const completedStatuses = new Set(["completed", "qaza_completed", "excused"])
 
 function completedAtFor(status: PrayerStatus) {
   return status === "completed" || status === "qaza_completed" ? new Date() : null
+}
+
+async function getExcusedRangesForUser(userId: string) {
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { excusedRanges: true },
+  })
+
+  return parseStoredExcusedRanges(user?.excusedRanges)
+}
+
+export async function reconcileExcusedPrayerLogs(input: {
+  userId: string
+  previousRanges: readonly ExcusedRange[]
+  currentRanges: readonly ExcusedRange[]
+}) {
+  for (const range of input.previousRanges) {
+    const staleExcusedLogs = await db.query.prayerLogs.findMany({
+      where: and(
+        eq(prayerLogs.userId, input.userId),
+        eq(prayerLogs.status, "excused"),
+        gte(prayerLogs.date, range.start),
+        lte(prayerLogs.date, range.end)
+      ),
+      columns: { id: true, date: true },
+    })
+
+    const staleIds = staleExcusedLogs
+      .filter((log) => !isDateInExcusedRange(log.date, input.currentRanges))
+      .map((log) => log.id)
+
+    if (staleIds.length > 0) {
+      await db
+        .update(prayerLogs)
+        .set({ status: "missed", completedAt: null })
+        .where(inArray(prayerLogs.id, staleIds))
+    }
+  }
+
+  for (const range of input.currentRanges) {
+    await db
+      .update(prayerLogs)
+      .set({ status: "excused", completedAt: null })
+      .where(
+        and(
+          eq(prayerLogs.userId, input.userId),
+          gte(prayerLogs.date, range.start),
+          lte(prayerLogs.date, range.end),
+          eq(prayerLogs.status, "missed")
+        )
+      )
+  }
 }
 
 export async function upsertPrayerStatus(input: {
@@ -38,6 +95,17 @@ export async function markPrayerCompleted(input: {
   prayerName: PrayerName
   date: string
 }) {
+  const excusedRanges = await getExcusedRangesForUser(input.userId)
+  if (isDateInExcusedRange(input.date, excusedRanges)) {
+    await upsertPrayerStatus({
+      userId: input.userId,
+      prayerName: input.prayerName,
+      date: input.date,
+      status: "excused",
+    })
+    return
+  }
+
   const existing = await db.query.prayerLogs.findFirst({
     where: and(
       eq(prayerLogs.userId, input.userId),
@@ -75,22 +143,21 @@ export async function markPrayerMissed(input: {
   prayerName: PrayerName
   date: string
 }) {
+  const excusedRanges = await getExcusedRangesForUser(input.userId)
+  if (isDateInExcusedRange(input.date, excusedRanges)) {
+    await upsertPrayerStatus({
+      userId: input.userId,
+      prayerName: input.prayerName,
+      date: input.date,
+      status: "excused",
+    })
+    return
+  }
+
   await upsertPrayerStatus({
     userId: input.userId,
     prayerName: input.prayerName,
     date: input.date,
     status: "missed",
   })
-
-  await db
-    .insert(qazaItems)
-    .values({
-      userId: input.userId,
-      prayerName: input.prayerName,
-      dateMissed: input.date,
-      isCompleted: false,
-    })
-    .onConflictDoNothing({
-      target: [qazaItems.userId, qazaItems.dateMissed, qazaItems.prayerName],
-    })
 }

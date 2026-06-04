@@ -5,17 +5,22 @@ import { motion } from "framer-motion"
 interface DailyProgressProps {
   completed: number;
   total: number;
+  isExcused?: boolean;
 }
 
-export function DailyProgress({ completed, total }: DailyProgressProps) {
-  const percentage = total > 0 ? (completed / total) * 100 : 0
-  const isDone = completed > 0 && completed === total
+export function DailyProgress({ completed, total, isExcused = false }: DailyProgressProps) {
+  const percentage = isExcused ? 100 : total > 0 ? (completed / total) * 100 : 0
+  const isDone = !isExcused && completed > 0 && completed === total
   const radius = 24
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (percentage / 100) * circumference
+  const progressColor = isExcused ? "text-sky-500" : "text-primary"
 
   return (
-    <div className="relative flex items-center justify-center w-16 h-16">
+    <div
+      className="relative flex items-center justify-center w-16 h-16"
+      aria-label={isExcused ? "Excused cycle day" : `${completed} of ${total} prayers completed`}
+    >
       {/* Pop effect ring when completed */}
       {isDone && (
         <motion.div
@@ -49,12 +54,12 @@ export function DailyProgress({ completed, total }: DailyProgressProps) {
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset }}
           transition={{ type: "spring", stiffness: 60, damping: 15 }}
-          className="text-primary"
+          className={progressColor}
           strokeLinecap="round"
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center text-xs font-bold text-foreground">
-        {completed}/{total}
+        {isExcused ? "EX" : `${completed}/${total}`}
       </div>
     </div>
   )

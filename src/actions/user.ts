@@ -5,6 +5,7 @@ import { users } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { reconcileExcusedPrayerLogs } from "@/lib/prayer-writes"
 import {
   excusedRangeSchema,
   geolocationSchema,
@@ -83,7 +84,25 @@ export async function updateUserPreferences(data: unknown) {
   if (parsed.data.excusedRanges !== undefined) updateData.excusedRanges = JSON.stringify(parsed.data.excusedRanges)
 
   try {
+    const previousExcusedRanges = parsed.data.excusedRanges === undefined
+      ? []
+      : parseJsonValue(
+        (await db.query.users.findFirst({
+          where: eq(users.id, session.user.id),
+          columns: { excusedRanges: true },
+        }))?.excusedRanges ?? null,
+        z.array(excusedRangeSchema),
+        []
+      )
+
     await db.update(users).set(updateData).where(eq(users.id, session.user.id))
+    if (parsed.data.excusedRanges !== undefined) {
+      await reconcileExcusedPrayerLogs({
+        userId: session.user.id,
+        previousRanges: previousExcusedRanges,
+        currentRanges: parsed.data.excusedRanges,
+      })
+    }
     revalidatePath("/")
     revalidatePath("/settings")
     revalidatePath("/qaza")

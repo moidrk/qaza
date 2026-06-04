@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "./ui/button";
+import { useAppStore } from "@/store";
+import { isDateInExcusedRange } from "@/lib/excused-periods";
 
 export function CheckInModal({
   prayerName,
@@ -15,6 +17,8 @@ export function CheckInModal({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
+  const excusedRanges = useAppStore((state) => state.excusedRanges);
+  const isExcusedDate = date !== "test" && isDateInExcusedRange(date, excusedRanges);
 
   // Close modal and remove query params
   const close = () => {
@@ -23,6 +27,11 @@ export function CheckInModal({
   };
 
   const handleAction = async (action: "prayed" | "qaza") => {
+    if (isExcusedDate) {
+      close();
+      return;
+    }
+
     if (date === "test") {
       alert(`Test mode: Action '${action}' clicked! No data was saved.`);
       close();
@@ -60,29 +69,44 @@ export function CheckInModal({
           className="w-full max-w-sm bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col p-6 space-y-6"
         >
           <div className="space-y-2 text-center">
-            <h2 className="text-xl font-bold">Did you pray {prayerName.charAt(0).toUpperCase() + prayerName.slice(1)}?</h2>
+            <h2 className="text-xl font-bold">
+              {isExcusedDate
+                ? "Cycle excuse period"
+                : `Did you pray ${prayerName.charAt(0).toUpperCase() + prayerName.slice(1)}?`}
+            </h2>
             <p className="text-muted-foreground text-sm">
-              Update your record so your Qaza count stays accurate.
+              {isExcusedDate
+                ? "This date is covered by your cycle excuse period, so it will not be added to Qaza."
+                : "Update your record so your Qaza count stays accurate."}
             </p>
           </div>
 
-          <div className="flex flex-col gap-3">
+          {isExcusedDate ? (
             <Button
               className="w-full rounded-xl h-12"
-              disabled={loading}
-              onClick={() => handleAction("prayed")}
+              onClick={close}
             >
-              {loading ? "Saving..." : "Yes, I prayed"}
+              Close
             </Button>
-            <Button
-              variant="outline"
-              className="w-full rounded-xl h-12"
-              disabled={loading}
-              onClick={() => handleAction("qaza")}
-            >
-              No, add to Qaza
-            </Button>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <Button
+                className="w-full rounded-xl h-12"
+                disabled={loading}
+                onClick={() => handleAction("prayed")}
+              >
+                {loading ? "Saving..." : "Yes, I prayed"}
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full rounded-xl h-12"
+                disabled={loading}
+                onClick={() => handleAction("qaza")}
+              >
+                No, add to Qaza
+              </Button>
+            </div>
+          )}
           
           <div className="text-center">
             <button 

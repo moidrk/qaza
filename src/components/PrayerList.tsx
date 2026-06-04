@@ -10,15 +10,20 @@ import { useQuery } from "@tanstack/react-query"
 import { getTodayPrayers } from "@/actions/prayers"
 import { format } from "date-fns"
 import { useMounted } from "@/hooks/useMounted"
+import { isDateInExcusedRange } from "@/lib/excused-periods"
 
 type PrayerLog = {
   prayerName: string
   status: string
 }
 
+function isCompletedStatus(status: string | undefined) {
+  return status === "completed" || status === "qaza_completed"
+}
+
 interface PrayerListProps {
   selectedDate: Date;
-  onProgressChange?: (completed: number, total: number) => void;
+  onProgressChange?: (completed: number, total: number, isExcused?: boolean) => void;
 }
 
 export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) {
@@ -30,6 +35,11 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
   const offlineMutations = useAppStore(state => state.offlineMutations)
   const timeFormatPref = useAppStore(state => state.timeFormat)
   const trackWitr = useAppStore(state => state.trackWitr)
+  const excusedRanges = useAppStore(state => state.excusedRanges)
+
+  const isExcusedDate = useMemo(() => {
+    return isDateInExcusedRange(dateStr, excusedRanges)
+  }, [dateStr, excusedRanges])
 
   const requiredPrayers = useMemo(() => {
     const list = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]
@@ -44,23 +54,23 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
     queryFn: async () => await getTodayPrayers(dateStr),
   })
 
-  // Compute completed state instantly from DB results + pending offline mutations
-  const completed = useMemo(() => {
-    const state: Record<string, boolean> = {};
+  // Compute prayer state instantly from DB results + pending offline mutations
+  const prayerStatuses = useMemo(() => {
+    const state: Record<string, string> = {};
     
     // 1. Start with database state
     if (dbPrayersRes?.success && dbPrayersRes.data) {
       dbPrayersRes.data.forEach((log: PrayerLog) => {
         const pNameLower = log.prayerName.charAt(0).toUpperCase() + log.prayerName.slice(1).toLowerCase();
-        state[pNameLower] = log.status === "completed" || log.status === "qaza_completed";
-        state[log.prayerName] = log.status === "completed" || log.status === "qaza_completed";
+        state[pNameLower] = log.status;
+        state[log.prayerName] = log.status;
       });
     }
     
     // 2. Overlay any pending local mutations (last mutation wins)
     offlineMutations.forEach(mut => {
       if (mut.type === "LOG_PRAYER" && mut.payload.date.startsWith(dateStr)) {
-        state[mut.payload.prayerName] = mut.payload.status === "completed" || mut.payload.status === "qaza_completed";
+        state[mut.payload.prayerName] = mut.payload.status;
       }
     });
     
@@ -68,12 +78,19 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
   }, [dbPrayersRes, offlineMutations, dateStr]);
 
   const completedCount = useMemo(() => {
-    return requiredPrayers.filter(p => completed[p]).length;
-  }, [requiredPrayers, completed]);
+    if (isExcusedDate) {
+      return requiredPrayers.length
+    }
+
+    return requiredPrayers.filter((prayer) => {
+      const status = prayerStatuses[prayer]
+      return isCompletedStatus(status) || status === "excused"
+    }).length;
+  }, [requiredPrayers, prayerStatuses, isExcusedDate]);
 
   useEffect(() => {
-    onProgressChange?.(completedCount, requiredPrayers.length);
-  }, [completedCount, requiredPrayers.length, onProgressChange]);
+    onProgressChange?.(completedCount, requiredPrayers.length, isExcusedDate);
+  }, [completedCount, requiredPrayers.length, isExcusedDate, onProgressChange]);
 
   const [nowTick, setNowTick] = useState(() => Date.now());
 
@@ -133,7 +150,13 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
       return;
     }
 
-    const isCompleted = !completed[prayer]
+    if (isExcusedDate) {
+      toast.info("This date is marked as a cycle excuse period, so it will not be counted as Qaza.")
+      setLastActionMessage(`${prayer} is excused for this cycle period.`)
+      return;
+    }
+
+    const isCompleted = !isCompletedStatus(prayerStatuses[prayer])
     
     if (isCompleted) {
       toast.success(`Alhamdulillah, ${prayer} logged!`)
@@ -159,7 +182,9 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
         if (prayer === "Witr") {
           time = timings ? `${timings.Isha} (After Isha)` : "After Isha"
         }
-        const isDone = completed[prayer]
+        const status = prayerStatuses[prayer]
+        const isExcused = isExcusedDate || status === "excused"
+        const isDone = isExcused || isCompletedStatus(status)
 
         if (time !== "--:--" && time !== "After Isha" && timeFormatPref === '12h') {
           // If includes " (After Isha)", split first
@@ -193,32 +218,33 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             }}
             tabIndex={0}
             role="button"
-            aria-pressed={isDone}
-            aria-disabled={isFuture}
-            aria-label={isDone ? `${prayer} is completed` : `Mark ${prayer} as prayed`}
+            aria-pressed={isExcused ? false : isDone}
+            aria-disabled={isFuture || isExcused}
+            aria-label={isExcused ? `${prayer} is excused for this cycle period` : isDone ? `${prayer} is completed` : `Mark ${prayer} as prayed`}
             className={`
               p-5 rounded-2xl flex items-center justify-between transition-all border select-none active:scale-[0.98]
               ${isFuture ? 'bg-muted/30 border-border/30 cursor-not-allowed opacity-60' : 
+                isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm cursor-default' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm cursor-pointer' : 
                 'bg-card border-border/60 hover:border-primary/30 shadow-sm cursor-pointer'}
             `}
           >
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold text-lg transition-colors ${isDone ? 'text-primary' : 'text-foreground'}`}>
+                <h3 className={`font-semibold text-lg transition-colors ${isExcused ? 'text-sky-600 dark:text-sky-400' : isDone ? 'text-primary' : 'text-foreground'}`}>
                   {prayer}
                 </h3>
-                {currentPrayer === prayer && (
+                {!isExcused && currentPrayer === prayer && (
                   <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded-full animate-pulse shadow-sm">
                     Now
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-sm text-muted-foreground" aria-hidden="true">{time}</p>
+                <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
                 {!isFuture && (
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    {isDone ? 'Completed' : 'Pending'}
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    {isExcused ? 'Excused' : isDone ? 'Completed' : 'Pending'}
                   </span>
                 )}
               </div>
@@ -226,22 +252,27 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             
             <motion.div
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors ${
+                isExcused ? 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400' :
                 isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border'
               }`}
               whileTap={{ scale: 0.85 }}
               aria-hidden="true"
             >
-              <motion.div
-                initial={false}
-                animate={{ 
-                  scale: isDone ? 1 : 0.2, 
-                  opacity: isDone ? 1 : 0,
-                  rotate: isDone ? 0 : -45
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <Check size={16} strokeWidth={3} />
-              </motion.div>
+              {isExcused ? (
+                <span className="text-[9px] font-bold leading-none">EX</span>
+              ) : (
+                <motion.div
+                  initial={false}
+                  animate={{
+                    scale: isDone ? 1 : 0.2,
+                    opacity: isDone ? 1 : 0,
+                    rotate: isDone ? 0 : -45
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Check size={16} strokeWidth={3} />
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         )

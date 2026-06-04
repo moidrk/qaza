@@ -54,7 +54,7 @@ export default async function SettingsPage() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold mb-4">Excused Periods (Cycle / Sick / Travel)</h2>
+              <h2 className="text-lg font-semibold mb-4">Cycle Excuse Periods</h2>
               <CycleSettings />
             </div>
           </div>
