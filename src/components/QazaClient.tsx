@@ -128,6 +128,17 @@ export function QazaClient({ stats: initialStats }: QazaClientProps) {
               <Card 
                 key={prayer} 
                 onClick={() => setSelectedPrayer(prayer)}
+                role="button"
+                tabIndex={0}
+                aria-label={`${prayer} Qaza details, ${isCaughtUp ? "Caught up" : count + " remaining"}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!e.repeat) {
+                      setSelectedPrayer(prayer);
+                    }
+                  }
+                }}
                 className={`transition-all overflow-hidden cursor-pointer active:scale-[0.98] flex flex-col justify-center p-4 min-h-[100px] shadow-sm ${cardSpanClass} ${
                   isCaughtUp
                     ? 'bg-muted/10 border-border/30 opacity-70 hover:opacity-100'
