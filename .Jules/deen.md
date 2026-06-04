@@ -9,3 +9,6 @@
 ## 2024-05-25 - Advanced Micro-Interactions & Delight
 **Learning:** A static mobile app feels like a desktop website. Adding tactile feedback and micro-animations significantly increases user engagement and satisfaction, especially for repetitive daily tasks like checking off prayers.
 **Action:** When appropriate, use Framer Motion for satisfying `whileTap` scaling, add celebratory animations (like ring bursts) upon task completion, and utilize native capabilities like `navigator.vibrate` to provide a truly native app feel.
+## 2025-02-18 - Prayer Card Status Clarity
+**Learning:** Prayer status was primarily conveyed via a checkmark, which can be ambiguous. Users need explicit text to understand status quickly.
+**Action:** Future agents should ensure critical states use both icons and text (e.g. 'Completed' vs 'Pending') and ensure actionable cards have tactile feedback like 'active:scale-[0.98]'.
