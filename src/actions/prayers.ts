@@ -5,28 +5,17 @@ import { qazaItems, prayerLogs, users } from "@/db/schema"
 import { db } from "@/db"
 import { auth } from "@/auth"
 import {
-  excusedRangeSchema,
   getZodError,
   isoDateSchema,
   prayerNameSchema,
   qazaAmountSchema,
   syncPrayerMutationListSchema,
-  type ExcusedRange,
   type PrayerName,
   type PrayerStatus,
 } from "@/lib/validation"
-import { upsertPrayerStatus } from "@/lib/prayer-writes"
+import { markPrayerMissed, upsertPrayerStatus } from "@/lib/prayer-writes"
+import { isDateInExcusedRange, parseStoredExcusedRanges } from "@/lib/excused-periods"
 import { z } from "zod"
-
-function parseStoredExcusedRanges(value: string | null | undefined): ExcusedRange[] {
-  if (!value) return []
-
-  try {
-    return z.array(excusedRangeSchema).parse(JSON.parse(value))
-  } catch {
-    return []
-  }
-}
 
 export async function getTodayPrayers(dateStr?: string) {
   const session = await auth()
@@ -306,9 +295,9 @@ export async function getWeeklyConsistency(clientDateStr?: string, daysBack: num
     const joinDateStr = joinDate.toISOString().split('T')[0];
     const trackWitrEnabled = user?.trackWitr || false;
     const excusedRanges = parseStoredExcusedRanges(user?.excusedRanges);
-    
+
     const isDateExcused = (dStr: string) => {
-      return excusedRanges.some(r => dStr >= r.start && dStr <= r.end);
+      return isDateInExcusedRange(dStr, excusedRanges);
     };
 
     const logs = await db.query.prayerLogs.findMany({
@@ -378,7 +367,11 @@ export async function syncPrayerMutations(mutations: unknown) {
 
     for (const payload of latestMutations.values()) {
       const { prayerName, date, status } = payload;
-      await upsertPrayerStatus({ userId, prayerName, date, status });
+      if (status === "missed") {
+        await markPrayerMissed({ userId, prayerName, date });
+      } else {
+        await upsertPrayerStatus({ userId, prayerName, date, status });
+      }
     }
     return { success: true };
   } catch (error) {
@@ -431,7 +424,7 @@ async function autoBackfillMissedPrayers(userId: string) {
 
     const excusedRanges = parseStoredExcusedRanges(user.excusedRanges);
     const isDateExcused = (dStr: string) => {
-      return excusedRanges.some(r => dStr >= r.start && dStr <= r.end);
+      return isDateInExcusedRange(dStr, excusedRanges);
     };
 
     const missing: { userId: string, prayerName: PrayerName, date: string, status: PrayerStatus }[] = [];

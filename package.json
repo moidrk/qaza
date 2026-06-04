@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test:push": "node --import tsx --test src/lib/notification-actions.test.ts src/lib/push-notifications.test.ts"
+    "test:push": "node --import tsx --test src/lib/excused-periods.test.ts src/lib/notification-actions.test.ts src/lib/push-notifications.test.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

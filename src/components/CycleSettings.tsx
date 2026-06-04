@@ -41,7 +41,7 @@ export function CycleSettings() {
       setExcusedRanges(updatedRanges)
       setStartDate("")
       setEndDate("")
-      toast.success("Excused period added successfully!")
+      toast.success("Cycle period added successfully!")
     } else {
       toast.error("Failed to save period settings")
     }
@@ -53,7 +53,7 @@ export function CycleSettings() {
     const res = await updateUserPreferences({ excusedRanges: updatedRanges })
     if (res.success) {
       setExcusedRanges(updatedRanges)
-      toast.success("Excused period removed")
+      toast.success("Cycle period removed")
     } else {
       toast.error("Failed to update settings")
     }
@@ -89,15 +89,15 @@ export function CycleSettings() {
           type="submit" 
           className="w-full rounded-xl flex items-center justify-center gap-2"
         >
-          <Plus className="h-4 w-4" /> Add Excused Period
+          <Plus className="h-4 w-4" /> Add Cycle Period
         </Button>
       </form>
 
       {/* List */}
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-muted-foreground">Logged Periods (Sickness / Cycle / Travel)</h4>
+        <h4 className="text-sm font-semibold text-muted-foreground">Logged Cycle Periods</h4>
         {excusedRanges.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic py-2">No excused periods logged.</p>
+          <p className="text-xs text-muted-foreground italic py-2">No cycle periods logged.</p>
         ) : (
           <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
             {excusedRanges.map((range, index) => {

@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { getUserLocalDate } from '@/lib/date-utils';
 import { requireCronAuth } from '@/lib/cron-auth';
 import { sendCronPushNotifications } from '@/lib/cron-push';
+import { isDateInExcusedRange, parseStoredExcusedRanges } from '@/lib/excused-periods';
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -44,6 +45,44 @@ export async function GET(request: Request) {
 
       if (existingLog) {
         skipped++;
+        continue;
+      }
+
+      const isExcusedToday = isDateInExcusedRange(
+        localDate,
+        parseStoredExcusedRanges(user.excusedRanges)
+      );
+
+      if (isExcusedToday) {
+        const payload = {
+          title: "Take care of yourself tonight",
+          body: "Your cycle excuse period is active, so today's prayers are not counted as Qaza. Rest well, make dua, and we will see you back soon.",
+          payload: {
+            url: "/",
+            type: "cycle_excused_night_summary"
+          }
+        };
+
+        const delivery = await sendCronPushNotifications({
+          userId: user.id,
+          subscriptions: subs,
+          payload,
+        });
+        expiredSubscriptions += delivery.expiredSubscriptions;
+
+        if (delivery.sentToAtLeastOne) {
+          await db.insert(notificationLogs).values({
+            userId: user.id,
+            uniqueKey,
+            type: "night_summary",
+          });
+          sent++;
+        } else if (delivery.failures > 0) {
+          errors++;
+        } else {
+          skipped++;
+        }
+
         continue;
       }
 

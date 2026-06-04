@@ -31,7 +31,7 @@ export function HomeClient({
   pwaInstalled?: boolean
 }) {
   const [selectedDate, setSelectedDate] = useState(new Date())
-  const [progress, setProgress] = useState({ completed: 0, total: 5 })
+  const [progress, setProgress] = useState({ completed: 0, total: 5, isExcused: false })
   const isMounted = useMounted()
   const [showGreeting, setShowGreeting] = useState(true)
   
@@ -39,8 +39,10 @@ export function HomeClient({
   const checkinPrayer = searchParams.get('checkin')
   const checkinDate = searchParams.get('date')
 
-  const handleProgressChange = useCallback((completed: number, total: number) => {
-    setProgress(prev => (prev.completed === completed && prev.total === total) ? prev : { completed, total })
+  const handleProgressChange = useCallback((completed: number, total: number, isExcused = false) => {
+    setProgress(prev => (
+      prev.completed === completed && prev.total === total && prev.isExcused === isExcused
+    ) ? prev : { completed, total, isExcused })
   }, [])
 
   useEffect(() => {
@@ -136,13 +138,15 @@ export function HomeClient({
                   {isToday ? "Today's Prayers" : format(selectedDate, "MMMM d, yyyy")}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {isToday ? "Stay consistent, stay blessed." : "Reviewing past logs."}
+                  {progress.isExcused
+                    ? "Cycle period active. Take care."
+                    : isToday ? "Stay consistent, stay blessed." : "Reviewing past logs."}
                 </p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-        <DailyProgress completed={progress.completed} total={progress.total} />
+        <DailyProgress completed={progress.completed} total={progress.total} isExcused={progress.isExcused} />
       </div>
 
       <div className="flex items-stretch gap-3 h-[72px]">

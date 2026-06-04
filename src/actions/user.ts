@@ -5,6 +5,7 @@ import { users } from "@/db/schema"
 import { eq } from "drizzle-orm"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
+import { applyExcusedRangesToExistingPrayers } from "@/lib/prayer-writes"
 import {
   excusedRangeSchema,
   geolocationSchema,
@@ -84,6 +85,9 @@ export async function updateUserPreferences(data: unknown) {
 
   try {
     await db.update(users).set(updateData).where(eq(users.id, session.user.id))
+    if (parsed.data.excusedRanges !== undefined) {
+      await applyExcusedRangesToExistingPrayers(session.user.id, parsed.data.excusedRanges)
+    }
     revalidatePath("/")
     revalidatePath("/settings")
     revalidatePath("/qaza")
