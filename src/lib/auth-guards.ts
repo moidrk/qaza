@@ -40,8 +40,10 @@ export function isBlockedEmail(email: string) {
 }
 
 export function isLikelyRandomName(name: string) {
-  const compactName = name.trim().replace(/\s+/g, "")
-  if (compactName.length < 12 || compactName.length !== name.trim().length) {
+  const trimmedName = name.trim()
+  const compactName = trimmedName.replace(/\s+/g, "")
+
+  if (compactName.length < 12 || compactName.length !== trimmedName.length) {
     return false
   }
 
@@ -74,5 +76,5 @@ export function isHoneypotFilled(formData: FormData) {
 
 export function isTooFastRegistration(formData: FormData, minimumMs = 1500) {
   const startedAt = Number(formData.get("startedAt"))
-  return Number.isFinite(startedAt) && Date.now() - startedAt < minimumMs
+  return !Number.isFinite(startedAt) || Date.now() - startedAt < minimumMs
 }
