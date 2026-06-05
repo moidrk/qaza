@@ -12,9 +12,10 @@ import Link from "next/link"
 import { Star } from "lucide-react"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { OnboardingWizard } from "@/components/OnboardingWizard"
+import dynamic from "next/dynamic"
+const OnboardingWizard = dynamic(() => import("@/components/OnboardingWizard").then(mod => mod.OnboardingWizard), { ssr: false })
 import { useSearchParams } from "next/navigation"
-import { CheckInModal } from "@/components/CheckInModal"
+const CheckInModal = dynamic(() => import("@/components/CheckInModal").then(mod => mod.CheckInModal), { ssr: false })
 import { useMounted } from "@/hooks/useMounted"
 
 type ConsistencyDay = {

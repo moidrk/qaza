@@ -1,11 +1,12 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
+const WeeklyChart = dynamic(() => import("@/components/WeeklyChart").then(mod => mod.WeeklyChart), { ssr: false })
 import { useQuery } from "@tanstack/react-query"
 import { Trophy, AlertCircle, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getWeeklyConsistency, getPrayerInsights } from "@/actions/prayers"
-import { ConsistencyHeatmap } from "@/components/ConsistencyHeatmap"
+import dynamic from "next/dynamic"
+const ConsistencyHeatmap = dynamic(() => import("@/components/ConsistencyHeatmap").then(mod => mod.ConsistencyHeatmap), { ssr: false })
 import { useMounted } from "@/hooks/useMounted"
 
 type ConsistencyDatum = {
@@ -66,14 +67,7 @@ export function AnalyticsClient() {
           </CardHeader>
           <CardContent className="h-[250px] w-full min-h-[250px] flex items-center justify-center">
             {mounted ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={250}>
-                <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} domain={[0, data.length > 0 ? Math.max(...data.map((d) => d.requiredCount ?? 5)) : 5]} />
-                  <Tooltip cursor={{ fill: "var(--primary)", opacity: 0.1 }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} />
-                  <Bar dataKey="prayers" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <WeeklyChart data={data} />
             ) : (
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             )}
