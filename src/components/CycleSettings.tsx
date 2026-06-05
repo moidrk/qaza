@@ -117,6 +117,7 @@ export function CycleSettings() {
                     type="button"
                     onClick={() => handleRemoveRange(index)} 
                     className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive rounded-full"
+                    aria-label="Remove cycle period"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

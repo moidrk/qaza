@@ -12,3 +12,7 @@
 ## 2025-02-18 - Prayer Card Status Clarity
 **Learning:** Prayer status was primarily conveyed via a checkmark, which can be ambiguous. Users need explicit text to understand status quickly.
 **Action:** Future agents should ensure critical states use both icons and text (e.g. 'Completed' vs 'Pending') and ensure actionable cards have tactile feedback like 'active:scale-[0.98]'.
+
+## 2026-06-05 - Adding aria-labels to icon-only buttons
+**Learning:** The application uses several `size="icon"` buttons without accessible names.
+**Action:** Ensure all future icon-only components include an explicit `aria-label` or screen-reader-only text so assistive technologies can announce their purpose.
