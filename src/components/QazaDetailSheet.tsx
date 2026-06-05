@@ -110,7 +110,7 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                 <h2 className="text-2xl font-bold text-foreground">{prayer} Qaza</h2>
                 <p className="text-sm text-muted-foreground mt-1">Detailed view of missed prayers</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Close details">
                 <X size={20} />
               </Button>
             </div>
