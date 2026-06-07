@@ -2,7 +2,7 @@
 
 import { usePrayerTimes } from "@/hooks/usePrayerTimes"
 import { motion } from "framer-motion"
-import { Check } from "lucide-react"
+import { Check, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useAppStore } from "@/store"
 import { toast } from "sonner"
@@ -162,7 +162,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
       toast.success(`Alhamdulillah, ${prayer} logged!`)
       setLastActionMessage(`${prayer} marked as completed.`)
     } else {
-      setLastActionMessage(`${prayer} marked as uncompleted.`)
+      setLastActionMessage(`${prayer} marked as missed.`)
     }
     
     addMutation({
@@ -184,6 +184,8 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
         }
         const status = prayerStatuses[prayer]
         const isExcused = isExcusedDate || status === "excused"
+        const isMissed = status === "missed"
+        const isQazaDone = status === "qaza_completed"
         const isDone = isExcused || isCompletedStatus(status)
 
         if (time !== "--:--" && time !== "After Isha" && timeFormatPref === '12h') {
@@ -220,18 +222,19 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             role="button"
             aria-pressed={isExcused ? false : isDone}
             aria-disabled={isFuture || isExcused}
-            aria-label={isExcused ? `${prayer} is excused for this cycle period` : isDone ? `${prayer} is completed` : `Mark ${prayer} as prayed`}
+            aria-label={isExcused ? `${prayer} is excused for this cycle period` : isDone ? `${prayer} is completed` : isMissed ? `${prayer} is missed` : `Mark ${prayer} as prayed`}
             className={`
               p-5 rounded-2xl flex items-center justify-between transition-all border select-none active:scale-[0.98]
               ${isFuture ? 'bg-muted/30 border-border/30 cursor-not-allowed opacity-60' : 
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm cursor-default' :
+                isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm cursor-pointer' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm cursor-pointer' : 
                 'bg-card border-border/60 hover:border-primary/30 shadow-sm cursor-pointer'}
             `}
           >
             <div>
               <div className="flex items-center gap-2">
-                <h3 className={`font-semibold text-lg transition-colors ${isExcused ? 'text-sky-600 dark:text-sky-400' : isDone ? 'text-primary' : 'text-foreground'}`}>
+                <h3 className={`font-semibold text-lg transition-colors ${isExcused ? 'text-sky-600 dark:text-sky-400' : isMissed ? 'text-amber-600 dark:text-amber-500' : isDone ? 'text-primary' : 'text-foreground'}`}>
                   {prayer}
                 </h3>
                 {!isExcused && currentPrayer === prayer && (
@@ -243,8 +246,8 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
                 {!isFuture && (
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                    {isExcused ? 'Excused' : isDone ? 'Completed' : 'Pending'}
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isMissed ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500' : isQazaDone ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500' : isDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    {isExcused ? 'Excused' : isMissed ? 'Missed' : isQazaDone ? 'Made Up' : isDone ? 'Completed' : 'Pending'}
                   </span>
                 )}
               </div>
@@ -253,6 +256,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             <motion.div
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors ${
                 isExcused ? 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400' :
+                isMissed ? 'bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-500' :
                 isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border'
               }`}
               whileTap={{ scale: 0.85 }}
@@ -260,6 +264,18 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             >
               {isExcused ? (
                 <span className="text-[9px] font-bold leading-none">EX</span>
+              ) : isMissed ? (
+                <motion.div
+                  initial={false}
+                  animate={{
+                    scale: 1,
+                    opacity: 1,
+                    rotate: 0
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <X size={16} strokeWidth={3} />
+                </motion.div>
               ) : (
                 <motion.div
                   initial={false}
