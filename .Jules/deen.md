@@ -1,3 +1,3 @@
-2024-06-07 - Visual feedback for explicitly missed prayers
-Learning: Users marking a prayer explicitly as "missed" need clear, non-shaming visual confirmation of this state, distinct from the default "pending/unknown" state. Currently, they cannot distinguish between "Pending" and "Missed" states when both share the identical UI on prayer cards.
-Action: Future updates modifying prayer states should ensure distinct visual and screen-reader feedback for explicitly missed actions (e.g. using subtle amber tones and an explicitly visible 'X' icon), maintaining the calm, non-shaming tone, separating it from pending and completed states. Ensure ARIA labels reflect these states accurately.
+YYYY-MM-DD - [Visual feedback for explicitly missed prayers]
+Learning: [Users marking a prayer explicitly as "missed" need clear, non-shaming visual confirmation of this state, distinct from the default "pending/unknown" state.]
+Action: [Future updates modifying prayer states should ensure distinct visual and screen-reader feedback for explicitly missed actions, maintaining the calm, non-shaming tone.]

@@ -162,7 +162,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
       toast.success(`Alhamdulillah, ${prayer} logged!`)
       setLastActionMessage(`${prayer} marked as completed.`)
     } else {
-      setLastActionMessage(`${prayer} marked as missed.`)
+      setLastActionMessage(`${prayer} marked as uncompleted.`)
     }
     
     addMutation({
@@ -227,8 +227,8 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               p-5 rounded-2xl flex items-center justify-between transition-all border select-none active:scale-[0.98]
               ${isFuture ? 'bg-muted/30 border-border/30 cursor-not-allowed opacity-60' : 
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm cursor-default' :
-                isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm cursor-pointer' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm cursor-pointer' : 
+                isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm cursor-pointer' :
                 'bg-card border-border/60 hover:border-primary/30 shadow-sm cursor-pointer'}
             `}
           >
@@ -256,7 +256,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             <motion.div
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors ${
                 isExcused ? 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400' :
-                isMissed ? 'bg-amber-500/10 border-amber-500 text-amber-600 dark:text-amber-500' :
+                isMissed ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' :
                 isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border'
               }`}
               whileTap={{ scale: 0.85 }}
@@ -267,11 +267,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               ) : isMissed ? (
                 <motion.div
                   initial={false}
-                  animate={{
-                    scale: 1,
-                    opacity: 1,
-                    rotate: 0
-                  }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 >
                   <X size={16} strokeWidth={3} />
