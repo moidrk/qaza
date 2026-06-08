@@ -143,7 +143,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
   const todayStr = format(new Date(), "yyyy-MM-dd")
   const isFuture = dateStr > todayStr;
 
-  const handleToggle = (prayer: string) => {
+  const handleAction = (prayer: string, actionStatus: "completed" | "missed") => {
     if (isFuture) {
       toast.error("You cannot log prayers for future dates!");
       setLastActionMessage(`Cannot log ${prayer} for a future date.`)
@@ -156,18 +156,31 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
       return;
     }
 
-    const isCompleted = !isCompletedStatus(prayerStatuses[prayer])
-    
-    if (isCompleted) {
+    const currentStatus = prayerStatuses[prayer];
+    const isCurrentlyDone = isCompletedStatus(currentStatus);
+    const isCurrentlyMissed = currentStatus === "missed";
+
+    // Since the backend only accepts completed, missed, qaza_completed, excused,
+    // and we cannot easily "delete" a log through this payload,
+    // we explicitly set it to the chosen status rather than toggling it to a "pending" state.
+    // If the user taps the same status, we'll still send the mutation (which is idempotent),
+    // but we can skip showing a duplicate toast.
+
+    if (actionStatus === "completed" && !isCurrentlyDone) {
       toast.success(`Alhamdulillah, ${prayer} logged!`)
       setLastActionMessage(`${prayer} marked as completed.`)
+    } else if (actionStatus === "missed" && !isCurrentlyMissed) {
+      toast.info(`${prayer} marked as missed.`)
+      setLastActionMessage(`${prayer} explicitly marked as missed.`)
+    } else if (actionStatus === "completed") {
+      setLastActionMessage(`${prayer} is already completed.`)
     } else {
-      setLastActionMessage(`${prayer} marked as uncompleted.`)
+      setLastActionMessage(`${prayer} is already missed.`)
     }
     
     addMutation({
       type: "LOG_PRAYER",
-      payload: { prayerName: prayer, date: dateStr, status: isCompleted ? "completed" : "missed" }
+      payload: { prayerName: prayer, date: dateStr, status: actionStatus }
     })
   }
 
@@ -208,27 +221,13 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             key={prayer}
-            onClick={() => handleToggle(prayer)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault()
-                if (!e.repeat) {
-                  handleToggle(prayer)
-                }
-              }
-            }}
-            tabIndex={0}
-            role="button"
-            aria-pressed={isExcused ? false : isDone}
-            aria-disabled={isFuture || isExcused}
-            aria-label={isExcused ? `${prayer} is excused for this cycle period` : isDone ? `${prayer} is completed` : isMissed ? `${prayer} is missed` : `Mark ${prayer} as prayed`}
             className={`
-              p-5 rounded-2xl flex items-center justify-between transition-all border select-none active:scale-[0.98]
-              ${isFuture ? 'bg-muted/30 border-border/30 cursor-not-allowed opacity-60' : 
-                isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm cursor-default' :
-                isDone ? 'bg-primary/5 border-primary/30 shadow-sm cursor-pointer' : 
-                isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm cursor-pointer' :
-                'bg-card border-border/60 hover:border-primary/30 shadow-sm cursor-pointer'}
+              p-4 rounded-2xl flex items-center justify-between transition-all border
+              ${isFuture ? 'bg-muted/30 border-border/30 opacity-60' :
+                isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm' :
+                isDone ? 'bg-primary/5 border-primary/30 shadow-sm' :
+                isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm' :
+                'bg-card border-border/60 hover:border-primary/30 shadow-sm'}
             `}
           >
             <div>
@@ -252,39 +251,42 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               </div>
             </div>
             
-            <motion.div
-              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors ${
-                isExcused ? 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400' :
-                isDone ? 'bg-primary border-primary text-primary-foreground' :
-                isMissed ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border'
-              }`}
-              whileTap={{ scale: 0.85 }}
-              aria-hidden="true"
-            >
+            <div className="flex items-center gap-2">
               {isExcused ? (
-                <span className="text-[9px] font-bold leading-none">EX</span>
-              ) : isMissed ? (
-                <motion.div
-                  initial={false}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <X size={16} strokeWidth={3} />
-                </motion.div>
+                <div className="w-11 h-11 rounded-full bg-sky-500/10 border-2 border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center" aria-hidden="true">
+                  <span className="text-[10px] font-bold leading-none">EX</span>
+                </div>
               ) : (
-                <motion.div
-                  initial={false}
-                  animate={{
-                    scale: isDone ? 1 : 0.2,
-                    opacity: isDone ? 1 : 0,
-                    rotate: isDone ? 0 : -45
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <Check size={16} strokeWidth={3} />
-                </motion.div>
+                <>
+                  <button
+                    type="button"
+                    disabled={isFuture || isExcused}
+                    onClick={() => handleAction(prayer, "missed")}
+                    aria-pressed={isMissed}
+                    aria-label={`Mark ${prayer} as missed`}
+                    className={`w-11 h-11 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors active:scale-90
+                      ${isMissed ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
+                      ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+                    `}
+                  >
+                    <X size={18} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isFuture || isExcused}
+                    onClick={() => handleAction(prayer, "completed")}
+                    aria-pressed={isDone}
+                    aria-label={`Mark ${prayer} as completed`}
+                    className={`w-11 h-11 rounded-full border-2 flex items-center justify-center overflow-hidden transition-colors active:scale-90
+                      ${isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
+                      ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
+                    `}
+                  >
+                    <Check size={18} strokeWidth={2.5} />
+                  </button>
+                </>
               )}
-            </motion.div>
+            </div>
           </motion.div>
         )
       })}
