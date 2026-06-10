@@ -57,7 +57,7 @@
     "eslint-config-next": "16.2.6",
     "react-email": "^6.3.2",
     "tailwindcss": "^4",
-    "tsx": "^4.22.3",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   },
   "overrides": {

@@ -227,6 +227,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm' :
                 isMissed ? 'bg-amber-500/5 border-amber-500/30 shadow-sm' :
+                currentPrayer === prayer ? 'bg-primary/5 border-primary/50 ring-1 ring-primary/20 shadow-sm' :
                 'bg-card border-border/60 hover:border-primary/30 shadow-sm'}
             `}
           >
@@ -270,7 +271,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     `}
                   >
                     <X size={18} strokeWidth={2.5} />
-                    {isMissed && <span className="text-xs font-semibold">Missed</span>}
+                    <span className="text-xs font-semibold">{isMissed ? "Missed" : "Miss"}</span>
                   </button>
                   <button
                     type="button"
