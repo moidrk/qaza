@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, CalendarDays, ListPlus, Check } from "lucide-react"
+import { X, CalendarDays, ListPlus, Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { getDetailedQaza, completeDetailedQaza, updateBulkQaza } from "@/actions/prayers"
 import { toast } from "sonner"
@@ -19,6 +19,8 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
   const [loading, setLoading] = useState(false)
   const [addingBulk, setAddingBulk] = useState(false)
   const [bulkAmount, setBulkAmount] = useState("")
+  const [completingItems, setCompletingItems] = useState<Record<string, boolean>>({})
+  const [completingBulk, setCompletingBulk] = useState(false)
 
   useEffect(() => {
     let isActive = true
@@ -44,6 +46,8 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
   }, [isOpen, prayer])
 
   const handleComplete = async (id: string, type: 'log' | 'item') => {
+    if (completingItems[id]) return;
+    setCompletingItems(prev => ({ ...prev, [id]: true }))
     const res = await completeDetailedQaza(id, type)
     if (res.success) {
       toast.success("Alhamdulillah, Qaza completed.")
@@ -51,14 +55,18 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
     } else {
       toast.error("Failed to mark as complete.")
     }
+    setCompletingItems(prev => ({ ...prev, [id]: false }))
   }
 
   const handleCompleteBulk = async () => {
+    if (completingBulk) return;
+    setCompletingBulk(true)
     const res = await updateBulkQaza(prayer, -1)
     if (res.success) {
       toast.success("Alhamdulillah, 1 Qaza completed from backlog.")
       setData(prev => prev ? { ...prev, bulkCount: Math.max(0, prev.bulkCount - 1) } : null)
     }
+    setCompletingBulk(false)
   }
 
   const handleAddBulk = async () => {
@@ -143,9 +151,10 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                                 size="sm" 
                                 variant="outline"
                                 onClick={() => handleComplete(item.id, item.type)}
-                                className="rounded-xl hover:bg-primary hover:text-primary-foreground border-primary/20 text-primary"
+                                disabled={completingItems[item.id]}
+                                className="rounded-xl hover:bg-primary hover:text-primary-foreground border-primary/20 text-primary min-h-[44px]"
                               >
-                                <Check size={16} className="mr-1" /> Prayed
+                                {completingItems[item.id] ? <Loader2 size={16} className="mr-1 animate-spin" /> : <Check size={16} className="mr-1" />} Prayed
                               </Button>
                             </div>
                           )
@@ -168,9 +177,10 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                         </div>
                         <Button 
                           onClick={handleCompleteBulk}
-                          className="rounded-xl shadow-sm"
+                          disabled={completingBulk}
+                          className="rounded-xl shadow-sm min-h-[44px]"
                         >
-                          <Check size={16} className="mr-1" /> Prayed One
+                          {completingBulk ? <Loader2 size={16} className="mr-1 animate-spin" /> : <Check size={16} className="mr-1" />} Prayed One
                         </Button>
                       </div>
                     </div>
@@ -191,18 +201,18 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                   {/* Manual Addition */}
                   <div className="space-y-4 pt-6 border-t border-border/50">
                     <h3 className="font-semibold">Add Historic Qaza</h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <div className="flex-1 space-y-1">
                         <Input 
                           type="number" 
                           placeholder="Amount (e.g. 10)" 
                           value={bulkAmount} 
                           onChange={e => setBulkAmount(e.target.value)}
-                          className="bg-background"
+                          className="bg-background min-h-[44px]"
                         />
                       </div>
-                      <Button onClick={handleAddBulk} disabled={addingBulk} variant="secondary">
-                        Add
+                      <Button onClick={handleAddBulk} disabled={addingBulk} variant="secondary" className="min-h-[44px]">
+                        {addingBulk ? <Loader2 size={16} className="mr-1 animate-spin" /> : null} Add
                       </Button>
                     </div>
                   </div>
