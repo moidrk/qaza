@@ -1,1 +1,5 @@
 2024-06-11 - QazaDetailSheet Touch Targets & Loading States\nLearning: Interactive elements in the QazaDetailSheet were too small for comfortable mobile use (under 44px) and lacked loading/disabled states during API calls, leading to potential duplicate submissions and poor UX.\nAction: Enforce a minimum touch target size of 44px (e.g., using Tailwind's min-h-[44px]) for all interactive buttons and inputs. Implement explicit loading and disabled states for async actions to provide immediate visual feedback.
+
+2024-06-15 - PrayerList Mobile Action Touch Targets
+Learning: The previous daily prayer cards aligned details and actions horizontally, causing action buttons to be too small and crowded on mobile screens. Also, an icon-only "Miss" button violated usability rules.
+Action: Used responsive stacked flex layouts (`flex-col sm:flex-row`) to vertically separate prayer info and action buttons on mobile, allowing buttons to expand full width (`flex-1`) for comfortable thumb usage. Ensured all primary action buttons have explicit text labels alongside icons.
