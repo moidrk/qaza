@@ -1,25 +1,27 @@
 ### What changed
-I implemented targeted accessibility improvements in two core interactive areas of the mobile app:
-1. **Qaza List Cards (`QazaClient.tsx`)**: Added `role="button"`, explicit `aria-label` detailing the remaining count, keyboard navigation (Enter/Space), and `tabIndex={0}`.
-2. **Quick Catch-Up (`QuickCatchUp.tsx`)**: Added `aria-label`, `aria-expanded`, and `aria-controls` to the floating action button to clarify its purpose. Added an explicit `aria-label` to the close button inside the drawer, and gave the drawer container an ID so it can be controlled by the main button.
+
+Updated the flex layout of the daily prayer cards in `src/components/PrayerList.tsx` to expand the action buttons ("Miss" and "Pray") on mobile viewports. Replaced the strict single-row layout with `flex-col sm:flex-row`, which stacks the details and actions vertically on very small screens, and used `flex-1` and `flex-[2]` to make the buttons fill the available horizontal space instead of remaining squished.
 
 ### Why it matters
-Users rely on the Qaza list and Quick Catch-up features every day to log their prayers. Previously, these components relied heavily on visual states and generic HTML tags (e.g., `<Card onClick={...}>` or icon-only buttons), which meant screen readers couldn't properly announce what the element did or its current state. By defining these explicitly, the app aligns better with its mission to be inclusive and easy to use.
+
+The daily prayer cards are the primary interaction point for the application. The previous layout constrained the action buttons, making them small and too difficult to reliably tap with a thumb on mobile screens, leading to misclicks.
 
 ### Mobile UX impact
-For keyboard or assistive device users navigating on mobile, they can now clearly understand the intent of the Quick Catch-up button (e.g. "Open Quick Catch-up") and explicitly hear the remaining count for each Qaza prayer card without having to rely on visual scanning. Keyboard events guard against `!e.repeat` to prevent spamming mutations if a user holds down a key.
+
+This significantly increases the touch target width for the primary actions on mobile, filling the screen horizontally instead of squishing together. The interaction is much faster and reduces errors.
 
 ### Accessibility impact
-- **Keyboard Support**: Full Enter/Space key support on Qaza list cards.
-- **ARIA Labels**: Descriptive labels applied to the main FAB and close button.
-- **ARIA States**: Added `aria-expanded` and `aria-controls` to better wire the bottom action drawer to its toggle button.
+
+The label for missing a prayer now includes the text "Miss" visually on screen instead of relying solely on an icon, improving clarity while still maintaining the `aria-label`s. Touch targets easily exceed the comfortable 44px threshold in width.
 
 ### Verification
-The following commands were run and passed successfully:
-- `npm run lint`
-- `npm run build`
-- `npm run test:push`
+
+Run the following commands successfully:
+- `npm run lint`: Passed
+- `npm run test:push`: Passed
+- `npm run build`: Passed
 
 ### Files changed
-- `src/components/QazaClient.tsx`
-- `src/components/QuickCatchUp.tsx`
+
+- `src/components/PrayerList.tsx`
+- `.Jules/deen.md`
