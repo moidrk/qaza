@@ -222,7 +222,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             animate={{ opacity: 1, y: 0 }}
             key={prayer}
             className={`
-              p-4 rounded-2xl flex items-center justify-between transition-all border
+              p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all border
               ${isFuture ? 'bg-muted/30 border-border/30 opacity-60' :
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm' :
@@ -230,30 +230,32 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                 'bg-card border-border/60 hover:border-primary/30 shadow-sm'}
             `}
           >
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className={`font-semibold text-lg transition-colors ${isExcused ? 'text-sky-600 dark:text-sky-400' : isDone ? 'text-primary' : isMissed ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
-                  {prayer}
-                </h3>
-                {!isExcused && currentPrayer === prayer && (
-                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded-full animate-pulse shadow-sm">
-                    Now
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
-                {!isFuture && (
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isDone ? 'bg-primary/10 text-primary' : isMissed ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500' : 'bg-muted text-muted-foreground'}`}>
-                    {isExcused ? 'Excused' : isDone ? 'Completed' : isMissed ? 'Missed' : 'Pending'}
-                  </span>
-                )}
+            <div className="flex justify-between items-start sm:block w-full sm:w-auto">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <h3 className={`font-semibold text-lg transition-colors ${isExcused ? 'text-sky-600 dark:text-sky-400' : isDone ? 'text-primary' : isMissed ? 'text-amber-600 dark:text-amber-500' : 'text-foreground'}`}>
+                    {prayer}
+                  </h3>
+                  {!isExcused && currentPrayer === prayer && (
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground rounded-full animate-pulse shadow-sm">
+                      Now
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-sm text-muted-foreground" aria-hidden="true">{isExcused ? "Cycle period" : time}</p>
+                  {!isFuture && (
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-sm ${isExcused ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' : isDone ? 'bg-primary/10 text-primary' : isMissed ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500' : 'bg-muted text-muted-foreground'}`}>
+                      {isExcused ? 'Excused' : isDone ? 'Completed' : isMissed ? 'Missed' : 'Pending'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {isExcused ? (
-                <div className="w-11 h-11 rounded-full bg-sky-500/10 border-2 border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center" aria-hidden="true">
+                <div className="w-11 h-11 rounded-full bg-sky-500/10 border-2 border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center sm:ml-auto" aria-hidden="true">
                   <span className="text-[10px] font-bold leading-none">EX</span>
                 </div>
               ) : (
@@ -264,13 +266,13 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     onClick={() => handleAction(prayer, "missed")}
                     aria-pressed={isMissed}
                     aria-label={`Mark ${prayer} as missed`}
-                    className={`h-11 px-3 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
+                    className={`flex-1 sm:flex-none h-11 px-3 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
                       ${isMissed ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
                   >
                     <X size={18} strokeWidth={2.5} />
-                    {isMissed && <span className="text-xs font-semibold">Missed</span>}
+                    <span className="text-xs font-semibold">Missed</span>
                   </button>
                   <button
                     type="button"
@@ -278,7 +280,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     onClick={() => handleAction(prayer, "completed")}
                     aria-pressed={isDone}
                     aria-label={`Mark ${prayer} as completed`}
-                    className={`h-11 px-4 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
+                    className={`flex-[2] sm:flex-none h-11 px-4 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
                       ${isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
