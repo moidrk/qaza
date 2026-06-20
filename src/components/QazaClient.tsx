@@ -7,6 +7,7 @@ import { QazaDetailSheet } from "@/components/QazaDetailSheet"
 import { useAppStore } from "@/store"
 import { motion } from "framer-motion"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { ChevronRight } from "lucide-react"
 import { getQazaStats } from "@/actions/prayers"
 
 interface QazaClientProps {
@@ -139,7 +140,7 @@ export function QazaClient({ stats: initialStats }: QazaClientProps) {
                     }
                   }
                 }}
-                className={`transition-all overflow-hidden cursor-pointer active:scale-[0.98] flex flex-col justify-center p-4 min-h-[100px] shadow-sm ${cardSpanClass} ${
+                className={`group transition-all overflow-hidden cursor-pointer active:scale-[0.98] flex flex-col justify-center p-4 min-h-[100px] shadow-sm relative ${cardSpanClass} ${
                   isCaughtUp
                     ? 'bg-muted/10 border-border/30 opacity-70 hover:opacity-100'
                     : 'bg-card border-border/60 hover:border-primary/30'
@@ -156,6 +157,9 @@ export function QazaClient({ stats: initialStats }: QazaClientProps) {
                       <span className="font-semibold text-foreground text-sm">{count}</span> remaining
                     </p>
                   )}
+                </div>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity">
+                  <ChevronRight size={18} />
                 </div>
               </Card>
             )

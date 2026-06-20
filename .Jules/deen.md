@@ -1,1 +1,3 @@
-2024-06-11 - QazaDetailSheet Touch Targets & Loading States\nLearning: Interactive elements in the QazaDetailSheet were too small for comfortable mobile use (under 44px) and lacked loading/disabled states during API calls, leading to potential duplicate submissions and poor UX.\nAction: Enforce a minimum touch target size of 44px (e.g., using Tailwind's min-h-[44px]) for all interactive buttons and inputs. Implement explicit loading and disabled states for async actions to provide immediate visual feedback.
+2024-06-20 - [Mobile UX: Explicit Affordances]
+Learning: In mobile app interfaces, clickable cards need explicit visual affordances. Users may not realize a card is tappable to open a detailed sheet unless there is a clear icon (like ChevronRight) or text prompting the action.
+Action: Always include clear navigational icons (e.g., ChevronRight) or action buttons within list items/cards that open detail views or drill-down pages.
