@@ -8,6 +8,7 @@ import { useAppStore } from "@/store"
 import { motion } from "framer-motion"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getQazaStats } from "@/actions/prayers"
+import { ChevronRight } from "lucide-react"
 
 interface QazaClientProps {
   stats: {
@@ -139,16 +140,16 @@ export function QazaClient({ stats: initialStats }: QazaClientProps) {
                     }
                   }
                 }}
-                className={`transition-all overflow-hidden cursor-pointer active:scale-[0.98] flex flex-col justify-center p-4 min-h-[100px] shadow-sm ${cardSpanClass} ${
+                className={`transition-all overflow-hidden cursor-pointer active:scale-[0.98] !flex-row items-center justify-between p-4 min-h-[80px] shadow-sm ${cardSpanClass} ${
                   isCaughtUp
                     ? 'bg-muted/10 border-border/30 opacity-70 hover:opacity-100'
                     : 'bg-card border-border/60 hover:border-primary/30'
                 }`}
               >
-                <div className="flex flex-col items-center text-center">
+                <div className="flex flex-col items-start text-left">
                   <h3 className={`text-lg font-bold ${isCaughtUp ? 'text-muted-foreground' : ''}`}>{prayer}</h3>
                   {isCaughtUp ? (
-                    <div className="mt-1 flex items-center justify-center gap-1 text-emerald-600/80 bg-emerald-50/50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
+                    <div className="mt-1 flex items-center gap-1 text-emerald-600/80 bg-emerald-50/50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full">
                       <span className="text-xs font-medium">Caught Up</span>
                     </div>
                   ) : (
@@ -157,6 +158,7 @@ export function QazaClient({ stats: initialStats }: QazaClientProps) {
                     </p>
                   )}
                 </div>
+                <ChevronRight className={`w-5 h-5 ${isCaughtUp ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} aria-hidden="true" />
               </Card>
             )
           })}
