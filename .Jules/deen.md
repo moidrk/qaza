@@ -3,3 +3,6 @@
 2025-03-03 - Mobile Action Buttons
 Learning: A repeated usability issue is that horizontal action buttons on list items become too small and clustered on mobile, especially when using icon-only buttons for unselected states. This leads to difficult thumb targeting and unclear actions.
 Action: When designing horizontal button groups for mobile, especially in lists like prayer cards, enforce stacked flex layouts (`flex-col sm:flex-row`). Allow buttons to span the full available width using `flex-[n]` or `flex-1` classes. Always use clear text labels alongside icons (e.g., "Missed" / "Miss", "Prayed" / "Pray") rather than relying on icons alone, to meet accessibility and usability standards.
+2025-02-27 - [Mobile Affordance on Cards]
+Learning: Mobile users need clear visual cues to understand that a card is tappable to reveal more details. Using just text centered in a box is a web paradigm that fails on mobile screens.
+Action: Add a clear visual affordance like a `ChevronRight` aligned to the right side of list items and cards that are tappable to open detail views or navigate, changing standard column flex to row layouts.
