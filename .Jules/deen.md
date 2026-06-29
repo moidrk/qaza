@@ -3,3 +3,6 @@
 2025-03-03 - Mobile Action Buttons
 Learning: A repeated usability issue is that horizontal action buttons on list items become too small and clustered on mobile, especially when using icon-only buttons for unselected states. This leads to difficult thumb targeting and unclear actions.
 Action: When designing horizontal button groups for mobile, especially in lists like prayer cards, enforce stacked flex layouts (`flex-col sm:flex-row`). Allow buttons to span the full available width using `flex-[n]` or `flex-1` classes. Always use clear text labels alongside icons (e.g., "Missed" / "Miss", "Prayed" / "Pray") rather than relying on icons alone, to meet accessibility and usability standards.
+2025-02-18 - [Mobile-Native List Patterns]
+Learning: Mobile users interact better with full-width, stacked vertical lists (`flex-col`) containing clear visual affordances (like `ChevronRight`) than cramped grid layouts (`grid-cols-2`), especially for interactive cards that open detail views.
+Action: Prefer stacked `flex-col` list items over grids for any primary interactive lists (like Qaza summaries) on mobile, and always include a navigational icon to indicate interactivity.
