@@ -123,7 +123,7 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
               </Button>
             </div>
 
-            <div className="overflow-y-auto p-6 space-y-8">
+            <div className="overflow-y-auto p-4 sm:p-6 space-y-8">
               {loading ? (
                 <div className="animate-pulse space-y-4">
                   <div className="h-16 bg-muted rounded-2xl w-full" />
@@ -142,8 +142,8 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                         {data.specificDates.map((item) => {
                           const dateObj = new Date(item.date)
                           return (
-                            <div key={item.id} className="flex items-center justify-between p-4 bg-background border border-border/60 rounded-2xl">
-                              <div>
+                            <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-background border border-border/60 rounded-2xl">
+                              <div className="w-full sm:w-auto">
                                 <p className="font-medium">{dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
                                 <p className="text-xs text-muted-foreground">Auto-tracked missing</p>
                               </div>
@@ -152,7 +152,7 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                                 variant="outline"
                                 onClick={() => handleComplete(item.id, item.type)}
                                 disabled={completingItems[item.id]}
-                                className="rounded-xl hover:bg-primary hover:text-primary-foreground border-primary/20 text-primary min-h-[44px]"
+                                className="rounded-xl hover:bg-primary hover:text-primary-foreground border-primary/20 text-primary min-h-[44px] w-full sm:w-auto"
                               >
                                 {completingItems[item.id] ? <Loader2 size={16} className="mr-1 animate-spin" /> : <Check size={16} className="mr-1" />} Prayed
                               </Button>
@@ -170,15 +170,15 @@ export function QazaDetailSheet({ prayer, isOpen, onClose }: QazaDetailSheetProp
                         <ListPlus size={18} className="text-primary" /> 
                         Historic Backlog
                       </h3>
-                      <div className="flex items-center justify-between p-5 bg-primary/5 border border-primary/20 rounded-2xl">
-                        <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-primary/5 border border-primary/20 rounded-2xl">
+                        <div className="w-full sm:w-auto">
                           <p className="font-bold text-xl">{data.bulkCount}</p>
                           <p className="text-sm text-muted-foreground">remaining bulk prayers</p>
                         </div>
                         <Button 
                           onClick={handleCompleteBulk}
                           disabled={completingBulk}
-                          className="rounded-xl shadow-sm min-h-[44px]"
+                          className="rounded-xl shadow-sm min-h-[44px] w-full sm:w-auto"
                         >
                           {completingBulk ? <Loader2 size={16} className="mr-1 animate-spin" /> : <Check size={16} className="mr-1" />} Prayed One
                         </Button>
