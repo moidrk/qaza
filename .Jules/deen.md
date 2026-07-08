@@ -6,3 +6,6 @@ Action: When designing horizontal button groups for mobile, especially in lists 
 2024-07-06 - [Qaza List Mobile Optimization]
 Learning: Multi-column grid layouts for interactive lists (like Qaza tracking) create uncomfortably small tap targets and feel cramped on mobile screens. A single-column layout using full-width rows with explicit visual affordances (`ChevronRight`) provides a much better mobile native feel and easier interaction.
 Action: Use single-column stacked lists for drill-down navigation screens instead of dense multi-column grids. Always add a visual affordance icon (like a chevron) to cards to indicate they are tappable and open detailed views.
+2025-03-04 - Action Buttons Width
+Learning: When using Tailwind's Flexbox to build horizontal button groups in list cards, applying a conditional size constraint like `sm:flex-none` causes the buttons to compress unevenly when viewed on mid-to-large mobile screens, resulting in poor thumb reachability.
+Action: Utilize `flex-1` unconditionally on grouped primary actions inside cards to guarantee they distribute width equally and maximize tap targets.
