@@ -6,3 +6,6 @@ Action: When designing horizontal button groups for mobile, especially in lists 
 2024-07-06 - [Qaza List Mobile Optimization]
 Learning: Multi-column grid layouts for interactive lists (like Qaza tracking) create uncomfortably small tap targets and feel cramped on mobile screens. A single-column layout using full-width rows with explicit visual affordances (`ChevronRight`) provides a much better mobile native feel and easier interaction.
 Action: Use single-column stacked lists for drill-down navigation screens instead of dense multi-column grids. Always add a visual affordance icon (like a chevron) to cards to indicate they are tappable and open detailed views.
+2025-07-20 - [Prayer Action Buttons Stack on Mobile]
+Learning: Mobile tap targets for action buttons were cramped because they tried to fit side-by-side on small screens, preventing the minimum 44px thumb target goal.
+Action: Used a flex-col-reverse parent layout on mobile screens with w-full buttons to stack primary actions on top and provide large horizontal thumb targets, while preserving the inline design for desktop (sm:flex-row and sm:w-auto).
