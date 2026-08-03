@@ -222,7 +222,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
             animate={{ opacity: 1, y: 0 }}
             key={prayer}
             className={`
-              p-4 rounded-2xl flex flex-row items-center justify-between gap-3 sm:gap-4 transition-all border
+              p-4 rounded-2xl flex flex-row flex-wrap items-center justify-between gap-3 sm:gap-4 transition-all border
               ${isFuture ? 'bg-muted/30 border-border/30 opacity-60' :
                 isExcused ? 'bg-sky-500/5 border-sky-500/20 shadow-sm' :
                 isDone ? 'bg-primary/5 border-primary/30 shadow-sm' :
