@@ -268,12 +268,12 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     aria-pressed={isMissed}
                     aria-label={`Mark ${prayer} as missed`}
                     className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
-                      ${isMissed ? 'w-auto px-4 bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'w-11 px-0 border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
+                      ${isMissed ? 'w-auto px-4 bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'w-11 px-0 sm:w-auto sm:px-3 border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
                   >
                     <X size={18} strokeWidth={2.5} />
-                    {isMissed && <span className="text-xs font-semibold">Missed</span>}
+                    <span className={`text-xs font-semibold ${isMissed ? '' : 'hidden sm:inline'}`}>{isMissed ? "Missed" : "Miss"}</span>
                   </button>
                   <button
                     type="button"
@@ -282,12 +282,12 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     aria-pressed={isDone}
                     aria-label={`Mark ${prayer} as completed`}
                     className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
-                      ${isDone ? 'w-auto px-4 bg-primary border-primary text-primary-foreground' : 'w-11 px-0 border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
+                      ${isDone ? 'w-auto px-4 bg-primary border-primary text-primary-foreground' : 'w-11 px-0 sm:w-auto sm:px-4 border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
                   >
                     <Check size={18} strokeWidth={2.5} />
-                    {isDone && <span className="text-xs font-semibold">Prayed</span>}
+                    <span className={`text-xs font-semibold ${isDone ? '' : 'hidden sm:inline'}`}>{isDone ? "Prayed" : "Pray"}</span>
                   </button>
                 </>
               )}
