@@ -253,7 +253,7 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
               </div>
             </div>
             
-            <div className="flex items-center gap-2 w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               {isExcused ? (
                 <div className="w-full sm:w-11 h-11 rounded-full sm:rounded-full rounded-2xl bg-sky-500/10 border-2 border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center" aria-hidden="true">
                   <span className="text-[10px] font-bold leading-none sm:hidden">EXCUSED</span>
@@ -267,13 +267,13 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     onClick={() => handleAction(prayer, "missed")}
                     aria-pressed={isMissed}
                     aria-label={`Mark ${prayer} as missed`}
-                    className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
-                      ${isMissed ? 'w-auto px-4 bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'w-11 px-0 sm:w-auto sm:px-3 border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
+                    className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90 w-full sm:w-auto px-4
+                      ${isMissed ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-500' : 'border-border hover:border-amber-500/40 hover:bg-amber-500/5 text-muted-foreground hover:text-amber-600'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
                   >
                     <X size={18} strokeWidth={2.5} />
-                    <span className={`text-xs font-semibold ${isMissed ? '' : 'hidden sm:inline'}`}>{isMissed ? "Missed" : "Miss"}</span>
+                    <span className={`text-xs font-semibold`}>{isMissed ? "Missed" : "Miss"}</span>
                   </button>
                   <button
                     type="button"
@@ -281,13 +281,13 @@ export function PrayerList({ selectedDate, onProgressChange }: PrayerListProps) 
                     onClick={() => handleAction(prayer, "completed")}
                     aria-pressed={isDone}
                     aria-label={`Mark ${prayer} as completed`}
-                    className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90
-                      ${isDone ? 'w-auto px-4 bg-primary border-primary text-primary-foreground' : 'w-11 px-0 sm:w-auto sm:px-4 border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
+                    className={`h-11 min-w-[44px] rounded-full border-2 flex items-center justify-center gap-1.5 overflow-hidden transition-all active:scale-90 w-full sm:w-auto px-4
+                      ${isDone ? 'bg-primary border-primary text-primary-foreground' : 'border-border hover:border-primary/40 hover:bg-primary/5 text-muted-foreground hover:text-primary'}
                       ${isFuture || isExcused ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
                     `}
                   >
                     <Check size={18} strokeWidth={2.5} />
-                    <span className={`text-xs font-semibold ${isDone ? '' : 'hidden sm:inline'}`}>{isDone ? "Prayed" : "Pray"}</span>
+                    <span className={`text-xs font-semibold`}>{isDone ? "Prayed" : "Pray"}</span>
                   </button>
                 </>
               )}
